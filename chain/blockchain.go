@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudflare/cfssl/log"
-	"github.com/ssbcV2/con"
+	"github.com/ssbcV2/commoncon"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
@@ -36,12 +36,12 @@ func GenerateGenesisBlock() meta.Block {
 //将当前区块链存储
 func StoreBlockChain(bc []meta.Block) {
 	bcBytes, _ := json.Marshal(bc)
-	redis.SetIntoRedis(con.BlockChainKey, string(bcBytes))
+	redis.SetIntoRedis(commoncon.BlockChainKey, string(bcBytes))
 }
 
 //获取到当前区块链
 func GetCurrentBlockChain() []meta.Block {
-	bcStr, _ := redis.GetFromRedis(con.BlockChainKey)
+	bcStr, _ := redis.GetFromRedis(commoncon.BlockChainKey)
 	bc := make([]meta.Block, 0)
 	err := json.Unmarshal([]byte(bcStr), &bc)
 	if err != nil {

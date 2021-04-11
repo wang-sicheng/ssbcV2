@@ -1,4 +1,4 @@
-package con
+package commoncon
 
 //锁定账户
 const LockedAccount = "lockedAccount"

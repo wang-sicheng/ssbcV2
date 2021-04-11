@@ -5,7 +5,7 @@ import (
 	"github.com/cloudflare/cfssl/log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/con"
+	"github.com/ssbcV2/commoncon"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
@@ -72,11 +72,11 @@ func ServerConnHandler(c net.Conn) {
 		//log.Info("对方节点:",c.RemoteAddr(),"传输->" + inStr)
 
 		switch msgType {
-		case con.TcpPing:
+		case commoncon.TcpPing:
 			handleTcpPing(msg, c)
-		case con.TcpAbstractHeader:
+		case commoncon.TcpAbstractHeader:
 			handleTcpAbstractHeader(msg, c)
-		case con.TcpCrossTrans:
+		case commoncon.TcpCrossTrans:
 			//接收到对方链的跨链交易处理
 			handleTcpCrossTrans(msg, c)
 		default:
@@ -99,7 +99,7 @@ func handleTcpCrossTrans(msg meta.TcpMessage, c net.Conn) {
 		log.Error("handleTcpCrossTrans,json ct failed", err)
 	}
 	switch ct.Type {
-	case con.CrossTranTransferType:
+	case commoncon.CrossTranTransferType:
 		//转账交易处理
 		handleRemoteCrossTransfer(ct, c)
 	}
@@ -111,7 +111,7 @@ func handleRemoteCrossTransfer(ct meta.CrossTran, c net.Conn) {
 	//首先基于proof进行merkle验证
 	proof := ct.Proof
 	//先获取到已同步的抽象区块头
-	key := con.RemoteHeadersKey + ct.SourceChainId
+	key := commoncon.RemoteHeadersKey + ct.SourceChainId
 	abHsStr, err := redis.GetFromRedis(key)
 	if err != nil {
 		log.Error(err)
@@ -159,11 +159,11 @@ func handleRemoteCrossTransfer(ct meta.CrossTran, c net.Conn) {
 		//生成新区块后保持与他链的抽象区块头同步
 		log.Info("Abstract Header Synchronizing")
 		//向对方发送自己的抽象区块头列表
-		LocalAHs := chain.GetLocalAbstractBlockChainHeaders(con.LocalChainId2)
+		LocalAHs := chain.GetLocalAbstractBlockChainHeaders(commoncon.LocalChainId2)
 		//然后基于tcp长连接发送给对方服务节点
 		LocalChainAbstractHByte, _ := json.Marshal(LocalAHs)
 		resp := meta.TcpMessage{
-			Type:    con.TcpAbstractHeader, //跨链抽象区块头同步
+			Type:    commoncon.TcpAbstractHeader, //跨链抽象区块头同步
 			Content: string(LocalChainAbstractHByte),
 		}
 		respByte, _ := json.Marshal(resp)
@@ -176,7 +176,7 @@ func handleRemoteCrossTransfer(ct meta.CrossTran, c net.Conn) {
 		//将打包好的跨链交易发送至对方链上
 		packedTranReceiptByte, _ := json.Marshal(packedTranReceipt)
 		receMess := meta.TcpMessage{
-			Type:    con.TcpCrossTransReceipt,
+			Type:    commoncon.TcpCrossTransReceipt,
 			Content: string(packedTranReceiptByte),
 		}
 		receMessByte, _ := json.Marshal(receMess)
@@ -202,17 +202,17 @@ func handleTcpAbstractHeader(msg meta.TcpMessage, c net.Conn) {
 	//解析出对方的chainID
 	chainId := rbhs[0].ChainId
 	//生成存储key
-	key := con.RemoteHeadersKey + chainId
+	key := commoncon.RemoteHeadersKey + chainId
 	redis.SetIntoRedis(key, remoteBH)
 
 	log.Info("Has saved ", chainId, "'s Abstract Headers To Local")
 
 	//向对方发送自己的抽象区块头列表
-	LocalAHs := chain.GetLocalAbstractBlockChainHeaders(con.LocalChainId2)
+	LocalAHs := chain.GetLocalAbstractBlockChainHeaders(commoncon.LocalChainId2)
 	//然后基于tcp长连接发送给对方服务节点
 	LocalChainAbstractHByte, _ := json.Marshal(LocalAHs)
 	resp := meta.TcpMessage{
-		Type:    con.TcpAbstractHeader, //跨链抽象区块头同步
+		Type:    commoncon.TcpAbstractHeader, //跨链抽象区块头同步
 		Content: string(LocalChainAbstractHByte),
 	}
 	respByte, _ := json.Marshal(resp)
@@ -222,7 +222,7 @@ func handleTcpAbstractHeader(msg meta.TcpMessage, c net.Conn) {
 func handleTcpPing(msg meta.TcpMessage, c net.Conn) {
 	var resp meta.TcpMessage
 	resp = meta.TcpMessage{
-		Type:    con.TcpPong,
+		Type:    commoncon.TcpPong,
 		Content: "",
 	}
 	respByte, _ := json.Marshal(resp)
@@ -311,12 +311,12 @@ func ClientConnHandler(c net.Conn, msg meta.TcpMessage) {
 	log.Info("Local Node ", c.LocalAddr(), " Received Msg From Remote Node ", c.RemoteAddr(), " Msg:", inStr)
 
 	switch respType {
-	case con.TcpPong:
+	case commoncon.TcpPong:
 		handleTcpPong(resp, c)
-	case con.TcpAbstractHeader:
+	case commoncon.TcpAbstractHeader:
 		//接收到服务端的区块头信息的回复
 		handleTcpAbstractHeaderResp(resp, c)
-	case con.TcpCrossTransReceipt:
+	case commoncon.TcpCrossTransReceipt:
 		//接收到服务端的关于交易执行的回执
 		handleTcpCrossTransReceipt(resp, c)
 	default:
@@ -336,7 +336,7 @@ func handleTcpCrossTransReceipt(msg meta.TcpMessage, c net.Conn) {
 	log.Info("Transaction Receipt Merkle Proof Verifying,Receipt Proof:", receipt.Proof)
 	proof := receipt.Proof
 	//先获取到已同步的抽象区块头
-	key := con.RemoteHeadersKey + receipt.SourceChainId
+	key := commoncon.RemoteHeadersKey + receipt.SourceChainId
 	abHsStr, err := redis.GetFromRedis(key)
 	if err != nil {
 		log.Error(err)
@@ -370,7 +370,7 @@ func handleTcpAbstractHeaderResp(msg meta.TcpMessage, c net.Conn) {
 	//解析出对方的chainID
 	chainId := rbhs[0].ChainId
 	//生成存储key
-	key := con.RemoteHeadersKey + chainId
+	key := commoncon.RemoteHeadersKey + chainId
 	redis.SetIntoRedis(key, remoteBH)
 	log.Info("Has Saved ", chainId, "'s Abstract Header To Local")
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/cloudflare/cfssl/log"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/con"
+	"github.com/ssbcV2/commoncon"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
 	"github.com/ssbcV2/util"
@@ -39,22 +39,22 @@ func ParseClientOrder(rw *bufio.ReadWriter) {
 		orderData = strings.Replace(orderData, "\n", "", -1)
 		//对指令做出解析
 		orderType, orderContent := ParseOrder(orderData)
-		if orderType == con.TXOrder {
+		if orderType == commoncon.TXOrder {
 			//提交新交易
 			handleTx(rw, orderContent)
-		} else if orderType == con.VrfOrder {
+		} else if orderType == commoncon.VrfOrder {
 			//对基于vrf以及门限签名的预言机机制的区块头提交命令执行
 			handleVrf(rw, orderContent)
-		} else if orderType == con.RegisterOrder {
+		} else if orderType == commoncon.RegisterOrder {
 			//对客户端的进行跨链注册指令的处理
 			handleRegisterOrder(rw, orderContent)
-		} else if orderType == con.TCPConnectOrder {
+		} else if orderType == commoncon.TCPConnectOrder {
 			//对TCP握手命令的解析执行
 			handleTCPConnectOrder(rw, orderContent)
-		} else if orderType == con.CrossTransOrder {
+		} else if orderType == commoncon.CrossTransOrder {
 			//对发送跨链交易命令的解析执行
 			handleCrossTransOrder(rw, orderContent)
-		} else if orderType == con.RemoteChainHeaderSynchronizeOrder {
+		} else if orderType == commoncon.RemoteChainHeaderSynchronizeOrder {
 			//通过Tcp长连接发送本链抽象区块头命令执行
 			handleRemoteChainHeaderSynchronizeOrder(rw, orderContent)
 		}
@@ -71,7 +71,7 @@ func handleCrossTransOrder(rw *bufio.ReadWriter, orderContent string) {
 	}
 	//判断跨链交易类型
 	switch cst.Type {
-	case con.CrossTranTransferType:
+	case commoncon.CrossTranTransferType:
 		//跨链转账交易处理
 		handleCrossTransfer(rw, orderContent, cst)
 	default:
@@ -84,7 +84,7 @@ func handleCrossTransfer(rw *bufio.ReadWriter, orderContent string, cst meta.Cro
 	//先将资产转账至锁定账户
 	newTx := meta.Transaction{
 		From:  cst.From,
-		To:    con.LockedAccount,
+		To:    commoncon.LockedAccount,
 		Data:  nil,
 		Value: 10,
 	}
@@ -124,7 +124,7 @@ func handleCrossTransfer(rw *bufio.ReadWriter, orderContent string, cst meta.Cro
 	//将打包好的跨链交易发送至对方链上
 	packedTranByte, _ := json.Marshal(packedTran)
 	msg := meta.TcpMessage{
-		Type:    con.TcpCrossTrans,
+		Type:    commoncon.TcpCrossTrans,
 		Content: string(packedTranByte),
 	}
 	if connect == nil {
@@ -140,11 +140,11 @@ func handleCrossTransfer(rw *bufio.ReadWriter, orderContent string, cst meta.Cro
 //通过Tcp长连接发送本链抽象区块头命令执行
 func handleRemoteChainHeaderSynchronizeOrder(rw *bufio.ReadWriter, orderContent string) {
 	//首先获取到本链的抽象区块头
-	LocalChainAbstractH := chain.GetLocalAbstractBlockChainHeaders(con.LocalChainId)
+	LocalChainAbstractH := chain.GetLocalAbstractBlockChainHeaders(commoncon.LocalChainId)
 	//然后基于tcp长连接发送给对方服务节点
 	LocalChainAbstractHByte, _ := json.Marshal(LocalChainAbstractH)
 	msg := meta.TcpMessage{
-		Type:    con.TcpAbstractHeader, //跨链抽象区块头同步
+		Type:    commoncon.TcpAbstractHeader, //跨链抽象区块头同步
 		Content: string(LocalChainAbstractHByte),
 	}
 	if TCPcon == nil {
@@ -157,7 +157,7 @@ func handleRemoteChainHeaderSynchronizeOrder(rw *bufio.ReadWriter, orderContent 
 //TCP握手命令解析执行
 func handleTCPConnectOrder(rw *bufio.ReadWriter, orderContent string) {
 	//首先获取到注册信息
-	infoStr, _ := redis.GetFromRedis(con.RegisterInformationKey)
+	infoStr, _ := redis.GetFromRedis(commoncon.RegisterInformationKey)
 	//然后对注册信息进行解析
 	info := parseRegister(infoStr)
 	//然后获取到需要进行tcp握手通信的地址
@@ -169,7 +169,7 @@ func handleTCPConnectOrder(rw *bufio.ReadWriter, orderContent string) {
 		TCPCONMap[info.Id] = TCPcon
 		if TCPcon != nil {
 			msg := meta.TcpMessage{
-				Type:    con.TcpPing,
+				Type:    commoncon.TcpPing,
 				Content: "",
 			}
 			ClientConnHandler(TCPcon, msg)
@@ -180,7 +180,7 @@ func handleTCPConnectOrder(rw *bufio.ReadWriter, orderContent string) {
 //跨链信息注册handler
 func handleRegisterOrder(rw *bufio.ReadWriter, orderContent string) {
 	//将跨链信息存储
-	redis.SetIntoRedis(con.RegisterInformationKey, orderContent)
+	redis.SetIntoRedis(commoncon.RegisterInformationKey, orderContent)
 	//在终端显示
 	log.Info("Cross-chain Information Registration Successful:", orderContent)
 }
@@ -202,7 +202,7 @@ func handleTx(rw *bufio.ReadWriter, orderContent string) {
 	newTX := ParseTransaction(orderContent)
 	//此时获取当前交易集
 	curTXs := chain.GetCurrentTxs()
-	if len(curTXs) == con.TxsThreshold-1 {
+	if len(curTXs) == commoncon.TxsThreshold-1 {
 		//交易数满足打包区块的要求
 		curTXs = append(curTXs, newTX)
 		//生成存储新区块
@@ -276,7 +276,7 @@ func ParseTransaction(tx string) meta.Transaction {
 //发送需要执行vrf的指令
 func SendVrfOrder(msg string, rw *bufio.ReadWriter) {
 	m := meta.P2PMessage{
-		Type:    con.VRFOrderMsg,
+		Type:    commoncon.VRFOrderMsg,
 		Content: msg,
 	}
 	SendP2PMessage(m, rw)
@@ -289,7 +289,7 @@ func SendVrfResult(v meta.VRFResult, rw *bufio.ReadWriter) {
 	vStr := string(vByte)
 
 	m := meta.P2PMessage{
-		Type:    con.VRFMsg,
+		Type:    commoncon.VRFMsg,
 		Content: vStr,
 	}
 	SendP2PMessage(m, rw)
@@ -300,7 +300,7 @@ func SendBlockChain(bc []meta.Block, rw *bufio.ReadWriter) {
 	bcByte, _ := json.Marshal(bc)
 	var m meta.P2PMessage
 	m = meta.P2PMessage{
-		Type:    con.BlockChainSynchronizeMsg,
+		Type:    commoncon.BlockChainSynchronizeMsg,
 		Content: string(bcByte),
 	}
 	SendP2PMessage(m, rw)
