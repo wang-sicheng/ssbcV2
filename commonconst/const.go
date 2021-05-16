@@ -1,4 +1,4 @@
-package commoncon
+package commonconst
 
 //锁定账户
 const LockedAccount = "lockedAccount"
@@ -41,12 +41,16 @@ const RemoteHeadersKey = "remote_headers_key"
 const TXOrder = "tx"
 const VrfOrder = "vrf"
 const RegisterOrder = "register"
-const TCPConnectOrder = "conn"
+const TCPConnectOrder = "conn"                  //TCP握手
 const CrossTransOrder = "cto"                   //发送跨链交易
 const RemoteChainHeaderSynchronizeOrder = "rcs" //给他链发送区块头同步信息
 
 //交易数阈值
-const TxsThreshold = 1
+const TxsThreshold = 4
+
+//恶意节点数阈值
+const EvilCount = 1
+
 const ProposalSignCount = 1
 const VRFThreshold = 1
 

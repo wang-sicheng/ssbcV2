@@ -1,4 +1,4 @@
-package p2p
+package network
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/multiformats/go-multiaddr"
 	chain2 "github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commoncon"
+	"github.com/ssbcV2/commonconst"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
 	"github.com/ssbcV2/util"
@@ -90,25 +90,25 @@ func ReadData(rw *bufio.ReadWriter) {
 		if str != "\n" {
 			//对消息进行解析
 			msg := ParseP2PMessage(str)
-			if msg.Type == commoncon.BlockChainSynchronizeMsg {
+			if msg.Type == commonconst.BlockChainSynchronizeMsg {
 				//区块同步消息
 				handleBlockChainSynchronizeMsg(msg.Content)
-			} else if msg.Type == commoncon.AbstractBlockHeaderSynchronizeMsg {
+			} else if msg.Type == commonconst.AbstractBlockHeaderSynchronizeMsg {
 				//抽象区块头同步消息
 				handleAbstractBlockHeaderSynchronizeMsg(msg.Content)
-			} else if msg.Type == commoncon.VRFOrderMsg {
+			} else if msg.Type == commonconst.VRFOrderMsg {
 				//vrf指令处理
 				handleVRFOrderMsg(msg.Content, rw)
-			} else if msg.Type == commoncon.VRFMsg {
+			} else if msg.Type == commonconst.VRFMsg {
 				//vrf结果消息处理
 				handleVRFMsg(msg.Content, rw)
-			} else if msg.Type == commoncon.TssMsg {
+			} else if msg.Type == commonconst.TssMsg {
 				//针对提案的门限签名的消息处理
 				//节点收到提案，基于提案进行签名发给提案节点，逐一验证，达到阈值后签名成功
-			} else if msg.Type == commoncon.AbstractHeaderProposalMsg {
+			} else if msg.Type == commonconst.AbstractHeaderProposalMsg {
 				//收到提案节点的提案消息的处理
 				handleAbstractHeaderProposalMsg(msg.Content, rw)
-			} else if msg.Type == commoncon.HeaderProposalSignMsg {
+			} else if msg.Type == commonconst.HeaderProposalSignMsg {
 				//提案节点收到针对提案的签名
 				handleHeaderProposalSignMsg(msg.Content)
 			}
@@ -146,7 +146,7 @@ func handleHeaderProposalSignMsg(content string) {
 }
 
 func summitAbHeaders(headers []byte) {
-	redis.SetIntoRedis(commoncon.AbstractHeadersFinalKey, string(headers))
+	redis.SetIntoRedis(commonconst.AbstractHeadersFinalKey, string(headers))
 	log.Info("The Abstract Block Header Is Stored Successfully")
 }
 
@@ -177,11 +177,11 @@ func handleAbstractHeaderProposalMsg(content string, rw *bufio.ReadWriter) {
 			Hash:      h1,
 			PubKey:    *util.LocalPublicKey,
 			Sign:      sig,
-			Threshold: commoncon.ProposalSignCount,
+			Threshold: commonconst.ProposalSignCount,
 		}
 		sByte, _ := json.Marshal(s)
 		var msg = meta.P2PMessage{
-			Type:    commoncon.HeaderProposalSignMsg,
+			Type:    commonconst.HeaderProposalSignMsg,
 			Content: string(sByte),
 		}
 		SendP2PMessage(msg, rw)
@@ -201,12 +201,12 @@ func handleAbstractBlockHeaderSynchronizeMsg(content string) {
 	//	log.Info("[handleAbstractBlockHeaderSynchronizeMsg] json unmarshal failed,err=",err)
 	//}
 	//将抽象区块头信息保存至本地
-	redis.SetIntoRedis(commoncon.AbstractHeadersKey, content)
+	redis.SetIntoRedis(commonconst.AbstractHeadersKey, content)
 }
 
 //获取本地存储的抽象区块头列表
 func getLocalStoredAbHeaders() []meta.AbstractBlockHeader {
-	val, err := redis.GetFromRedis(commoncon.AbstractHeadersKey)
+	val, err := redis.GetFromRedis(commonconst.AbstractHeadersKey)
 	if err != nil {
 		log.Info(err)
 	}
@@ -258,7 +258,7 @@ func sendProposal(abHeaders []meta.AbstractBlockHeader, rw *bufio.ReadWriter) {
 	var p2pMsg meta.P2PMessage
 	content, _ := json.Marshal(abHeaders)
 	p2pMsg = meta.P2PMessage{
-		Type:    commoncon.AbstractHeaderProposalMsg,
+		Type:    commonconst.AbstractHeaderProposalMsg,
 		Content: string(content),
 	}
 	SendP2PMessage(p2pMsg, rw)
@@ -337,8 +337,8 @@ func BlockChainSynchronize(rw *bufio.ReadWriter) {
 		bc := chain2.GetCurrentBlockChain()
 		bcByte, _ := json.Marshal(bc)
 		msg := meta.P2PMessage{
-			Type:    commoncon.BlockChainSynchronizeMsg, //区块链同步
-			Content: string(bcByte),                     //区块链信息
+			Type:    commonconst.BlockChainSynchronizeMsg, //区块链同步
+			Content: string(bcByte),                       //区块链信息
 		}
 		SendP2PMessage(msg, rw)
 		time.Sleep(60 * time.Second)
@@ -352,8 +352,8 @@ func BlockChainHeaderSynchronize(rw *bufio.ReadWriter) {
 		abhs := chain2.GetLocalAbstractBlockChainHeaders("ssbc")
 		bcByte, _ := json.Marshal(abhs)
 		msg := meta.P2PMessage{
-			Type:    commoncon.AbstractBlockHeaderSynchronizeMsg, //抽象区块头同步
-			Content: string(bcByte),                              //区块链信息
+			Type:    commonconst.AbstractBlockHeaderSynchronizeMsg, //抽象区块头同步
+			Content: string(bcByte),                                //区块链信息
 		}
 		SendP2PMessage(msg, rw)
 		time.Sleep(10 * time.Second)
