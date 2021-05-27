@@ -1,18 +1,4 @@
-package smart_contract
-
-import (
-	"encoding/json"
-	"testing"
-)
-
-func TestBuildAndRun(t *testing.T) {
-	BuildAndRun("test/","test")
-}
-func TestA(t *testing.T) {
-	a:= struct {
-		Code string
-	}{
-		Code:`package main
+package main
 
 import (
 	"encoding/json"
@@ -149,7 +135,6 @@ func handleGetAbstractBlockHeader(args map[string]string,w http.ResponseWriter) 
 
 	resByte,_:=json.Marshal(res)
 	w.Write(resByte)
-
 }
 
 
@@ -182,42 +167,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-`}
-	aB,_:=json.Marshal(a)
-	log.Info(string(aB))
-}
-
-func TestListAllContains(t *testing.T) {
-	cs:=ListAllContains()
-	for _, container := range cs {
-		log.Info(container.ID, container.Image)
-		for _,p:=range container.Ports{
-			log.Info(p.PublicPort)
-		}
-	}
-
-}
-
-func TestMap(t *testing.T){
-	m:=make(map[string]string)
-	m["height"]="0"
-	m["dest"]="ssbc2"
-	mB,_:=json.Marshal(m)
-	log.Info(string(mB))
-	a:= struct {
-		Args string
-	}{
-		Args:string(mB),
-	}
-	aB,_:=json.Marshal(a)
-	log.Info(string(aB))
-}
-func TestStrToMap(t *testing.T){
-	s:="{\"dest\":\"ssbc2\",\"height\":\"0\"}"
-	m:=make(map[string]string)
-
-	err:=json.Unmarshal([]byte(s),&m)
-	log.Info(err)
-	log.Info(m)
-}
-
