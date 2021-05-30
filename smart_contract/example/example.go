@@ -1,20 +1,4 @@
-package smart_contract
 
-import (
-	"encoding/json"
-	"fmt"
-	"github.com/cloudflare/cfssl/log"
-	"testing"
-)
-
-func TestBuildAndRun(t *testing.T) {
-	BuildAndRun("test/","test")
-}
-func TestGenerateCodeJson(t *testing.T) {
-	a:= struct {
-		Code string
-	}{
-		Code:`
 package main
 
 import (
@@ -101,45 +85,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-`}
-	aB,_:=json.Marshal(a)
-	fmt.Println(string(aB))
-}
-
-func TestGenerateArgsJsonMap(t *testing.T){
-	m:=make(map[string]string)
-	m["height"]="0"
-	m["dest"]="ssbc2"
-	mB,_:=json.Marshal(m)
-	a:= struct {
-		Args string
-	}{
-		Args:string(mB),
-	}
-	aB,_:=json.Marshal(a)
-	log.Info(string(aB))
-}
-
-
-
-func TestListAllContains(t *testing.T) {
-	cs:=ListAllContains()
-	for _, container := range cs {
-		log.Info(container.ID, container.Image)
-		for _,p:=range container.Ports{
-			log.Info(p.PublicPort)
-		}
-	}
-
-}
-
-
-func TestStrToMap(t *testing.T){
-	s:="{\"dest\":\"ssbc2\",\"height\":\"0\"}"
-	m:=make(map[string]string)
-
-	err:=json.Unmarshal([]byte(s),&m)
-	log.Info(err)
-	log.Info(m)
-}
-
