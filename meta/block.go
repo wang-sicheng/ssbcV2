@@ -11,9 +11,9 @@ type Transaction struct {
 	Value     int               `json:"value"`
 	Id        []byte            `json:"id"`
 	Timestamp string            `json:"timestamp"`
-	Hash       []byte `json:"hash"`
-	PublicKey  string `json:"public_key"`
-	Sign       []byte `json:"sign"`
+	Hash      []byte            `json:"hash"`
+	PublicKey string            `json:"public_key"`
+	Sign      []byte            `json:"sign"`
 }
 
 type TransactionData struct {
@@ -23,13 +23,13 @@ type TransactionData struct {
 }
 
 type PostTran struct {
-	From      string            `json:"from"`
-	To        string            `json:"to"`
-	Dest      string            `json:"dest"`
-	Contract  string            `json:"contract"`
-	Method    string            `json:"method"`
-	Args      string `json:"args"`
-	Value     int               `json:"value"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Dest     string `json:"dest"`
+	Contract string `json:"contract"`
+	Method   string `json:"method"`
+	//Args      string `json:"args"`
+	Value      int    `json:"value"`
 	PrivateKey string `json:"private_key"`
 	PublicKey  string `json:"public_key"`
 	Sign       string `json:"sign"`

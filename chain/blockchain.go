@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudflare/cfssl/log"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/util"
-	"sync"
 	"time"
 )
-
-var mutex = &sync.Mutex{}
 
 var BlockChain []meta.Block //声明全局变量
 

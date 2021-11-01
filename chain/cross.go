@@ -2,7 +2,7 @@ package chain
 
 import (
 	"encoding/json"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/util"

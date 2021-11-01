@@ -52,15 +52,6 @@ func (t TestMD5Content) Equals(other Content) (bool, error) {
 	return t.x == other.(TestMD5Content).x, nil
 }
 
-func calHash(hash []byte, hashStrategy func() hash.Hash) ([]byte, error) {
-	h := hashStrategy()
-	if _, err := h.Write(hash); err != nil {
-		return nil, err
-	}
-
-	return h.Sum(nil), nil
-}
-
 var table = []struct {
 	testCaseId          int
 	hashStrategy        func() hash.Hash
@@ -647,4 +638,3 @@ func TestMerkleTree_MerklePath(t *testing.T) {
 		}
 	}
 }
-

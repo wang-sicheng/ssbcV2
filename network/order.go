@@ -7,7 +7,7 @@ import (
 	"github.com/cloudflare/cfssl/log"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
 	"github.com/ssbcV2/util"

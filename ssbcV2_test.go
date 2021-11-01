@@ -6,5 +6,5 @@ import (
 )
 
 func TestBuildAndRun(t *testing.T) {
-	smart_contract.BuildAndRun("./smart_contract/test/","test")
+	smart_contract.BuildAndRun("./smart_contract/test/", "test")
 }

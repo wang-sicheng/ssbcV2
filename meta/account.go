@@ -3,11 +3,11 @@ package meta
 //账户
 
 type Account struct {
-	Address    string //账户地址
-	Balance    int    //账户余额
-	Data       AccountData
-	PublicKey  []byte //账户公钥
-	PrivateKey []byte //账户私钥
+	Address    string      `json:"address"` //账户地址
+	Balance    int         `json:"balance"` //账户余额
+	Data       AccountData `json:"data"`
+	PublicKey  []byte      `json:"publickey"`  //账户公钥
+	PrivateKey []byte      `json:"privatekey"` //账户私钥
 }
 
 type AccountData struct {

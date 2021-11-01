@@ -22,7 +22,6 @@ type AccountData struct {
 	ContractName string //合约名称
 }
 
-
-func (a *AccountManager)Register() {
+func (a *AccountManager) Register() {
 
 }

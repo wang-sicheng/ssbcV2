@@ -36,22 +36,20 @@ func init() {
 	DockerClient = cli
 }
 
-
-
 //基于源代码编译为docker镜像
-func BuildAndRun(path string,name string) {
+func BuildAndRun(path string, name string) {
 	//超时退出设置
 	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	//defer cancel()
 
 	//先压缩源代码文件
 	tar, err := archive.TarWithOptions(path, &archive.TarOptions{})
-	log.Info("合约编译镜像地址为：",path)
+	log.Info("合约编译镜像地址为：", path)
 	//获取当前程序执行的路径
 	file, _ := os.Getwd()
 	log.Info("当前程序执行路径:", file)
 	if err != nil {
-		log.Info("tar err:",err)
+		log.Info("tar err:", err)
 	}
 
 	//build参数
@@ -61,7 +59,7 @@ func BuildAndRun(path string,name string) {
 		Labels: map[string]string{
 			"name": name,
 		},
-		Remove:     true,
+		Remove: true,
 	}
 
 	res, err := DockerClient.ImageBuild(ctx, tar, opts)
@@ -78,7 +76,7 @@ func BuildAndRun(path string,name string) {
 	//把build成功的镜像run为容器
 	exports := make(nat.PortSet, 10)
 	port, err := nat.NewPort("tcp", "8080")
-	if err!=nil{
+	if err != nil {
 		log.Error(err)
 	}
 	exports[port] = struct{}{}
@@ -86,9 +84,9 @@ func BuildAndRun(path string,name string) {
 
 	//这里嵌入一个逻辑--寻找当前空闲的端口号
 	//获取到可用的tcp连接端口
-	availPInt,_ := getFreePort()
-	log.Info("可用端口号为：",availPInt)
-	availPStr:=strconv.Itoa(availPInt)
+	availPInt, _ := getFreePort()
+	log.Info("可用端口号为：", availPInt)
+	availPStr := strconv.Itoa(availPInt)
 	portBind := nat.PortBinding{HostPort: availPStr}
 	portMap := make(nat.PortMap, 0)
 	tmp := make([]nat.PortBinding, 0, 1)
@@ -96,9 +94,9 @@ func BuildAndRun(path string,name string) {
 	portMap[port] = tmp
 	hostConfig := &container.HostConfig{PortBindings: portMap}
 	// networkingConfig := &network.NetworkingConfig{}
-	containerName := "contract"+name
-	body, err := DockerClient.ContainerCreate(ctx, config, hostConfig, nil,nil, containerName)
-	if err!=nil{
+	containerName := "contract" + name
+	body, err := DockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
+	if err != nil {
 		log.Error(err)
 	}
 	log.Info("容器build成功，ID: ", body.ID)
@@ -113,16 +111,16 @@ func ContractDataServer(key string) (data []byte) {
 	//智能合约数据服务
 	params := url.Values{}
 	Url, err := url.Parse("http://docker.for.mac.host.internal:9999/query")
-	if err!=nil{
-		log.Info("url parse err:",err)
+	if err != nil {
+		log.Info("url parse err:", err)
 	}
 
-	params.Set("queryKey",key)
+	params.Set("queryKey", key)
 	//如果参数中有中文参数,这个方法会进行URLEncode
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
 
-	resp,err := http.Get(urlPath)
+	resp, err := http.Get(urlPath)
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -134,73 +132,71 @@ func ContractDataServer(key string) (data []byte) {
 }
 
 //调用智能合约
-func CallContract(name string,method string,args map[string]string) (retErr error,resp meta.ContractResponse) {
+func CallContract(name string, method string, args map[string]string) (retErr error, resp meta.ContractResponse) {
 	//step0：先进行参数校验
-	if name==""|| method==""{
-		retErr=errors.New("invalid call params")
+	if name == "" || method == "" {
+		retErr = errors.New("invalid call params")
 		log.Error(retErr)
 		return
 	}
 	//step1：判断是否存在所调用的智能合约
 	//先取出当前运行的容器列表
 	var find bool
-	cs:= ListAllContains()
-	cont:=types.Container{}
+	cs := ListAllContains()
+	cont := types.Container{}
 	for _, c := range cs {
 		log.Info(c.ID, c.Image)
-		if c.Image==name{
-			cont=c
-			find=true
+		if c.Image == name {
+			cont = c
+			find = true
 		}
 	}
-	if find==false{
-		retErr=errors.New("contract not exists")
+	if find == false {
+		retErr = errors.New("contract not exists")
 		log.Error(retErr)
 		return
 	}
 
 	//解析出所调用的合约地址
 	var port uint16
-	for _,p:=range cont.Ports{
-		port=p.PublicPort
+	for _, p := range cont.Ports {
+		port = p.PublicPort
 		break
 	}
-	portStr:=strconv.Itoa(int(port))
-
+	portStr := strconv.Itoa(int(port))
 
 	//封装调用参数
-	req:=meta.ContractRequest{
+	req := meta.ContractRequest{
 		Method: method,
 		Args:   args,
 	}
-	reqByte,_:=json.Marshal(req)
-	body:=bytes.NewBuffer(reqByte)
-	res,err := http.Post("http://127.0.0.1:"+portStr, "application/json;charset=utf-8", body)
-	if err!=nil{
-		log.Error("[CallContract] call err:",err)
-		retErr=err
+	reqByte, _ := json.Marshal(req)
+	body := bytes.NewBuffer(reqByte)
+	res, err := http.Post("http://127.0.0.1:"+portStr, "application/json;charset=utf-8", body)
+	if err != nil {
+		log.Error("[CallContract] call err:", err)
+		retErr = err
 		return
 	}
 
 	//读取合约调用结果
 	result, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
-	if err!=nil{
-		log.Error("[CallContract] read result err:",err)
-		retErr=err
+	if err != nil {
+		log.Error("[CallContract] read result err:", err)
+		retErr = err
 		return
 	}
 	//反序列化为最终response
-	response:=meta.ContractResponse{}
-	retErr=json.Unmarshal(result,&response)
-	if retErr!=nil{
-		log.Error("[CallContract] json unmarshal failed,err:",err)
+	response := meta.ContractResponse{}
+	retErr = json.Unmarshal(result, &response)
+	if retErr != nil {
+		log.Error("[CallContract] json unmarshal failed,err:", err)
 		return
 	}
-	return nil,response
+	return nil, response
 
 }
-
 
 func printError(rd io.Reader) error {
 	type ErrorDetail struct {
@@ -308,7 +304,7 @@ func main2() {
 }
 
 //List and manage containers
-func ListAllContains() []types.Container{
+func ListAllContains() []types.Container {
 	containers, err := DockerClient.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		panic(err)

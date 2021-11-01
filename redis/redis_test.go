@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"fmt"
+	"github.com/cloudflare/cfssl/log"
 	"testing"
 )
 

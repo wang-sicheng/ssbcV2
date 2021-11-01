@@ -134,6 +134,7 @@ func (p *pbft) RsaVerySignWithSha256(data, signData, keyBytes []byte) bool {
 	}
 	return true
 }
+
 //数字签名
 func RsaSignWithSha256(data []byte, keyBytes []byte) []byte {
 	h := sha256.New()

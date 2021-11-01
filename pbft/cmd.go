@@ -40,11 +40,11 @@ type Commit struct {
 }
 
 //<REPLY,v,t,c,i,r>
-type Reply struct {
-	MessageID int
-	NodeID    string
-	Result    bool
-}
+//type Reply struct {
+//	MessageID int
+//	NodeID    string
+//	Result    bool
+//}
 
 type Message struct {
 	Content string

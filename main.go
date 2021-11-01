@@ -1,18 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/pbft"
 	"os"
 )
-
-
-
 
 func main() {
 	//为四个节点生成公私钥
@@ -24,6 +22,28 @@ func main() {
 	nodeID := os.Args[1]
 	//数据库连接
 	levelDB.InitDB(nodeID)
+
+	// 获取或生成 Faucet 账户
+	accountsBytes := levelDB.DBGet(commonconst.AccountsKey)
+	if accountsBytes == nil {
+		// 创建 Faucet 账户，其他账户的初始余额来自它
+		faucetAccount := meta.Account{
+			Address:    commonconst.FaucetAccountAddress,
+			Balance:    1 << 48,
+			Data:       meta.AccountData{},
+			PrivateKey: nil,
+			PublicKey:  nil,
+		}
+		faucetAccountBytes, _ := json.Marshal(faucetAccount)
+		levelDB.DBPut(commonconst.FaucetAccountAddress, faucetAccountBytes)
+	} else {
+		err := json.Unmarshal(accountsBytes, &commonconst.Accounts)
+		if err != nil {
+			log.Infof("unmarshal accounts err")
+		}
+	}
+	log.Infof("%v\n", commonconst.Accounts)
+
 	if nodeID == "client" {
 		pbft.ClientSendMessageAndListen() //启动客户端程序
 		//初始化

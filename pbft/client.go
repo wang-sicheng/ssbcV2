@@ -3,7 +3,7 @@ package pbft
 import (
 	"crypto/rand"
 	"github.com/cloudflare/cfssl/log"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"math/big"
 )
 

@@ -5,7 +5,7 @@ import (
 	"github.com/cloudflare/cfssl/log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
@@ -32,7 +32,7 @@ func TCPSend(msg meta.TCPMessage, addr string) {
 	//	//直接复用之前的连接
 	//	con = exCon
 	//} else {
-		//否则直接dial建立新的连接
+	//否则直接dial建立新的连接
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Error("[TCPSend]connect error,err:", err, "msg:", msg, "addr:", addr)

@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
-	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"io/ioutil"
 	"net"
@@ -118,10 +117,10 @@ func (p *pbft) handleClientRequest(content []byte) {
 	err = json.Unmarshal([]byte(transMsg), &trans)
 	util.DealJsonErr("handleClientRequest", err)
 	//step3：主节点对交易进行验签，验签不通过的丢弃
-	if !RsaVerySignWithSha256(trans.Hash,trans.Sign,[]byte(trans.PublicKey)){
-		log.Error("[handleClientRequest] 验签失败!!")
-		return
-	}
+	//if !RsaVerySignWithSha256(trans.Hash,trans.Sign,[]byte(trans.PublicKey)){
+	//	log.Error("[handleClientRequest] 验签失败!!")
+	//	return
+	//}
 	//*******************************************************************
 
 	//待注释内容--测试专用(主节点作恶：篡改交易内容，hash值变化，但是无法篡改客户端签名)
@@ -132,9 +131,8 @@ func (p *pbft) handleClientRequest(content []byte) {
 
 	//*******************************************************************
 
-
 	//解析交易、执行交易步骤根据交易的input生成output
-	trans=p.parseAndDealTransaction(trans)
+	trans = p.parseAndDealTransaction(trans)
 	trans.Timestamp = time.Now().String()
 	trans.Id, _ = util.CalculateHash([]byte(trans.Timestamp))
 	bc := chain.GetCurrentBlockChain()
@@ -145,8 +143,8 @@ func (p *pbft) handleClientRequest(content []byte) {
 		//主节点接收到的交易已经到达阈值，打包新区块进行PBFT共识
 		newBlock := chain.GenerateNewBlock(p.transPool[index])
 		//主节点对打包区块进行签名
-		blockSign:=p.RsaSignWithSha256(newBlock.Hash, p.node.rsaPrivKey)
-		newBlock.Signature=blockSign
+		blockSign := p.RsaSignWithSha256(newBlock.Hash, p.node.rsaPrivKey)
+		newBlock.Signature = blockSign
 		newBlockMsg, err := json.Marshal(newBlock)
 		util.DealJsonErr("handleClientRequest", err)
 		r.Content = string(newBlockMsg)
@@ -180,87 +178,118 @@ func (p *pbft) handleClientRequest(content []byte) {
 }
 
 //主节点收到交易后需要对交易进行解析处理
-func (p *pbft) parseAndDealTransaction(t meta.Transaction)meta.Transaction {
-	log.Info("主节点接收到的交易为:",t)
+func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
+	log.Info("主节点接收到的交易为:", t)
 	//首先判断该笔交易是否为智能合约调用
-	if t.Contract!=""{
+	if t.Contract != "" {
 		//先判断是合约调用还是合约部署
-		if t.To==commonconst.ContractDeployAddress{
+		if t.To == commonconst.ContractDeployAddress {
 			//合约部署处理
 			//step1：生成合约账户
-			priKey,PubKey:= GetKeyPair()
+			priKey, PubKey := GetKeyPair()
 			//将公钥进行hash
-			pubHash,_:=util.CalculateHash(PubKey)
+			pubHash, _ := util.CalculateHash(PubKey)
 			//将公钥的前20位作为账户地址
-			addr:=hex.EncodeToString(pubHash[:20])
-			ad:=meta.AccountData{
+			addr := hex.EncodeToString(pubHash[:20])
+			ad := meta.AccountData{
 				Code:         t.Data.Code,
 				ContractName: t.Contract,
 			}
-			account:=meta.Account{
+			account := meta.Account{
 				Address:    addr,
 				Balance:    0,
 				Data:       ad,
 				PublicKey:  PubKey,
 				PrivateKey: priKey,
 			}
-			accountB,_:=json.Marshal(account)
-			set:=make(map[string]string)
-			accountKey:=commonconst.AccountPrefixKey+addr
-			set[accountKey]=string(accountB)
-			t.Data.Set=set
-		}else {
+			accountB, _ := json.Marshal(account)
+			set := make(map[string]string)
+			accountKey := addr
+			set[accountKey] = string(accountB)
+			t.Data.Set = set
+		} else {
 			//合约调用处理--调用智能合约产生读写集
-			err,res:=smart_contract.CallContract(t.Contract,t.Method,t.Args)
-			if err!=nil{
-				log.Error("合约调用失败")
-				//调用失败
-			}else {
-				//交易的data字段赋值
-				t.Data.Read=res.Read
-				t.Data.Set=res.Set
-			}
+			//err,res:=smart_contract.CallContract(t.Contract,t.Method,t.Args)
+			//if err!=nil{
+			//	log.Error("合约调用失败")
+			//	//调用失败
+			//}else {
+			//	//交易的data字段赋值
+			//	t.Data.Read=res.Read
+			//	t.Data.Set=res.Set
+			//}
 		}
-	}else {
+	} else {
 		//非智能合约调用交易-->即简单的转账交易(而且是简单的本链转账交易)
-		t=p.dealLocalTransFer(t)
+		t = p.dealLocalTransFer(t)
 	}
 	return t
 }
 
-func (p *pbft) dealLocalTransFer (t meta.Transaction) meta.Transaction{
-	from:=t.From
-	to:=t.To
-	value:=t.Value
+func (p *pbft) dealLocalTransFer(t meta.Transaction) meta.Transaction {
+	log.Infof("准备处理转账交易。")
+	from := t.From
+	to := t.To
+	value := t.Value
 	//step1：简单的余额校验，转出账户是否具有转账条件
-	fromKey:=commonconst.AccountPrefixKey+from
-	fromA:=levelDB.DBGet(fromKey)
-	fromAccount:=meta.Account{}
-	err:=json.Unmarshal(fromA,&fromAccount)
-	if err!=nil{
-		log.Error("[dealLocalTransFer] json unmarshal failed,err:",err)
-	}
-	if fromAccount.Balance<value{
+	fromKey := from
+	fromA := levelDB.DBGet(fromKey)
+	fromAccount := meta.Account{}
+	err := json.Unmarshal(fromA, &fromAccount)
+
+	toKey := to
+	if from == commonconst.FaucetAccountAddress {
+		log.Infof("准备创建账户。")
+		newAccount := meta.Account{
+			Address:    toKey,
+			Balance:    10000,
+			Data:       meta.AccountData{},
+			PrivateKey: nil,
+			PublicKey:  nil,
+		}
+		newAccountBytes, _ := json.Marshal(newAccount)
+		levelDB.DBPut(to, newAccountBytes)
+		commonconst.Accounts[to] = struct{}{}
+
+		setMap := make(map[string]string)
+
+		toRefresh, _ := json.Marshal(newAccount)
+		setMap[to] = string(toRefresh)
+		//交易的写集赋值
+		t.Data.Set = setMap
 		return t
-	}else {
+	}
+	toA := levelDB.DBGet(toKey)
+	toAccount := meta.Account{}
+	err = json.Unmarshal(toA, &toAccount)
+
+	log.Infof("%v\n", fromAccount)
+	log.Infof("%v\n", toAccount)
+
+	if err != nil {
+		log.Error("[dealLocalTransFer] json unmarshal failed,err:", err)
+	}
+	if fromAccount.Balance < value {
+		return t
+	} else {
 		//余额够，需要进行状态变更
-		toKey:=commonconst.AccountPrefixKey+to
-		toA:=levelDB.DBGet(toKey)
-		toAccount:=meta.Account{}
-		err:=json.Unmarshal(toA,&toAccount)
-		if err!=nil{
-			log.Error("[dealLocalTransFer] json unmarshal failed,err:",err)
+		toKey := to
+		toA := levelDB.DBGet(toKey)
+		toAccount := meta.Account{}
+		err := json.Unmarshal(toA, &toAccount)
+		if err != nil {
+			log.Error("[dealLocalTransFer] json unmarshal failed,err:", err)
 		}
 		//from的钱减，to的钱加
-		fromAccount.Balance=fromAccount.Balance-value
-		toAccount.Balance=toAccount.Balance+value
-		setMap:=make(map[string]string)
-		fromRefresh,_:=json.Marshal(fromAccount)
-		toRefresh,_:=json.Marshal(toAccount)
-		setMap[fromKey]=string(fromRefresh)
-		setMap[toKey]=string(toRefresh)
+		fromAccount.Balance = fromAccount.Balance - value
+		toAccount.Balance = toAccount.Balance + value
+		setMap := make(map[string]string)
+		fromRefresh, _ := json.Marshal(fromAccount)
+		toRefresh, _ := json.Marshal(toAccount)
+		setMap[fromKey] = string(fromRefresh)
+		setMap[toKey] = string(toRefresh)
 		//交易的写集赋值
-		t.Data.Set=setMap
+		t.Data.Set = setMap
 		return t
 	}
 }
@@ -279,18 +308,18 @@ func (p *pbft) handlePrePrepare(content []byte) {
 	digestByte, _ := hex.DecodeString(pp.Digest)
 	//首先检查所有的交易客户端签名（防止主节点作恶）
 	//step1先获取到全部的交易
-	block:=meta.Block{}
-	err=json.Unmarshal([]byte(pp.RequestMessage.Content),&block)
-	if err!=nil{
-		log.Error("[handlePrePrepare] json err:",err)
+	block := meta.Block{}
+	err = json.Unmarshal([]byte(pp.RequestMessage.Content), &block)
+	if err != nil {
+		log.Error("[handlePrePrepare] json err:", err)
 	}
-	for _,tx:=range block.TX{
-		//验签,只要有一笔交易的验签不通过则拒绝进行prepare广播
-		if !RsaVerySignWithSha256(tx.Hash,tx.Sign,[]byte(tx.PublicKey)){
-			log.Info("交易签名验证失败，怀疑主节点篡改交易信息，拒绝进行prepare广播")
-			return
-		}
-	}
+	//for _,tx:=range block.TX{
+	//	//验签,只要有一笔交易的验签不通过则拒绝进行prepare广播
+	//	if !RsaVerySignWithSha256(tx.Hash,tx.Sign,[]byte(tx.PublicKey)){
+	//		log.Info("交易签名验证失败，怀疑主节点篡改交易信息，拒绝进行prepare广播")
+	//		return
+	//	}
+	//}
 	if digest := getDigest(pp.RequestMessage); digest != pp.Digest {
 		log.Info("信息摘要对不上，拒绝进行prepare广播")
 	} else if p.sequenceID+1 != pp.SequenceID {
@@ -471,22 +500,31 @@ func (p *pbft) handleCommit(content []byte) {
 //状态数据库更新
 func (p *pbft) refreshState(b meta.Block) {
 	//ste1：首先取出本区块中所有的交易
-	txs:=b.TX
+	txs := b.TX
 	//每一笔交易写集进行更新,若交易为部署新合约，则触发部署
-	for _,tx:=range txs{
-		if tx.To==commonconst.ContractDeployAddress && p.node.nodeID=="N0"{
+	for _, tx := range txs {
+		if tx.To == commonconst.ContractDeployAddress && p.node.nodeID == "N0" {
 			//部署合约
-			contractName:=tx.Contract
+			//contractName:=tx.Contract
 			//生成build地址
-			path:="./smart_contract/"+contractName+"/"
-			smart_contract.BuildAndRun(path,contractName)
+			//path:="./smart_contract/"+contractName+"/"
+			//smart_contract.BuildAndRun(path,contractName)
 		}
-		set:=tx.Data.Set
-		for k,v:=range set{
-			if k!=""{
-				levelDB.DBPut(k,[]byte(v))
+		set := tx.Data.Set
+
+		delete(set, commonconst.FaucetAccountAddress)
+		for k, v := range set {
+			if k != "" {
+				levelDB.DBPut(k, []byte(v))
+				account := meta.Account{}
+				_ = json.Unmarshal([]byte(v), &account)
+				commonconst.Accounts[account.Address] = struct{}{}
+
+				accountsBytes, _ := json.Marshal(commonconst.Accounts)
+				levelDB.DBPut(commonconst.AccountsKey, accountsBytes)
 			}
 		}
+
 	}
 }
 

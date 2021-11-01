@@ -3,7 +3,7 @@ package network
 import (
 	"encoding/json"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/meta"
 )
 

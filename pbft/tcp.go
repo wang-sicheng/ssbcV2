@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/commonconst"
+	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
@@ -25,7 +25,7 @@ func clientTcpListen() {
 		if err != nil {
 			log.Error(err)
 		}
-		log.Info("新连接：", conn.LocalAddr().String(), conn.RemoteAddr().String())
+		log.Info("新连接：", conn.LocalAddr().String(), " -- ", conn.RemoteAddr().String())
 		clientHandleNewConn(conn)
 	}
 }
@@ -42,11 +42,11 @@ func clientHandleNewConn(conn net.Conn) {
 	//defer conn.Close()
 
 	//Version2
-	b,err:=ioutil.ReadAll(conn)
-	if err!=nil{
-		log.Error("[clientHandleNewConn] err:",err)
+	b, err := ioutil.ReadAll(conn)
+	if err != nil {
+		log.Error("[clientHandleNewConn] err:", err)
 	}
-	clientHandleTcpMsg(b,conn)
+	clientHandleTcpMsg(b, conn)
 
 }
 
@@ -77,15 +77,21 @@ func clientHandleTcpMsg(content []byte, conn net.Conn) {
 	}
 }
 
-func refreshState (b meta.Block) {
+func refreshState(b meta.Block) {
 	//ste1：首先取出本区块中所有的交易
-	txs:=b.TX
+	txs := b.TX
 	//每一笔交易写集进行更新
-	for _,tx:=range txs{
-		set:=tx.Data.Set
-		for k,v:=range set{
-			if k!=""{
-				levelDB.DBPut(k,[]byte(v))
+	for _, tx := range txs {
+		set := tx.Data.Set
+		delete(set, commonconst.FaucetAccountAddress)
+		for k, v := range set {
+			if k != "" {
+				levelDB.DBPut(k, []byte(v))
+				account := meta.Account{}
+				_ = json.Unmarshal([]byte(v), &account)
+				commonconst.Accounts[account.Address] = struct{}{}
+				accountsBytes, _ := json.Marshal(commonconst.Accounts)
+				levelDB.DBPut(commonconst.AccountsKey, accountsBytes)
 			}
 		}
 	}
@@ -101,7 +107,7 @@ func (p *pbft) TcpListen() {
 	defer listen.Close()
 	for {
 		conn, err := listen.Accept()
-		log.Info("新连接：", conn.LocalAddr().String(), conn.RemoteAddr().String())
+		log.Info("新连接：", conn.LocalAddr().String(), " -- ", conn.RemoteAddr().String())
 		if err != nil {
 			log.Error(err)
 		}
@@ -123,14 +129,12 @@ func (p *pbft) handleNewConn(conn net.Conn) {
 	//}
 
 	//Version2
-	b,err:=ioutil.ReadAll(conn)
-	if err!=nil{
-		log.Error("[handleNewConn] err:",err)
+	b, err := ioutil.ReadAll(conn)
+	if err != nil {
+		log.Error("[handleNewConn] err:", err)
 	}
-	p.handleRequest(b,conn)
+	p.handleRequest(b, conn)
 }
-
-
 
 //使用tcp发送消息
 func tcpDial(context []byte, addr string) {

@@ -38,14 +38,14 @@ func TestVRF(t *testing.T) {
 }
 
 func TestGenerateVrfResult(t *testing.T) {
-	res:=GenerateVrfResult("hello")
+	res := GenerateVrfResult("hello")
 	fmt.Println(res.Result)
 
 	//res.Msg="hi"
 	//res.PK=[]byte{}
-	_,pk1:=p256.GenerateKey()
-	pk1B,_:=json.Marshal(pk1)
-	res.PK=pk1B
-	b:=VerifyVrf(res)
+	_, pk1 := p256.GenerateKey()
+	pk1B, _ := json.Marshal(pk1)
+	res.PK = pk1B
+	b := VerifyVrf(res)
 	fmt.Println(b)
 }
