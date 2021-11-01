@@ -363,12 +363,18 @@ func postTran(ctx *gin.Context) {
 	if err != nil {
 		log.Error("[postTran],json decode err:", err)
 	}
-
-	//if levelDB.DBGet(pt.From) == nil || levelDB.DBGet(pt.To) == nil {
-	//	hr:= warpGoodHttpResponse("地址不存在!")
-	//	ctx.JSON(http.StatusOK,hr)
-	//	return
-	//}
+	// 确保账户已存在
+	addressExist := false
+	_, fromAddressExists := commonconst.Accounts[pt.From]
+	_, toAddressExists := commonconst.Accounts[pt.To]
+	if (pt.From == commonconst.FaucetAccountAddress || fromAddressExists) && toAddressExists {
+		addressExist = true
+	}
+	if !addressExist {
+		hr := warpGoodHttpResponse("账户不存在")
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
 
 	//将args解析
 	args := make(map[string]string)
