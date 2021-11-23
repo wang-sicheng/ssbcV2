@@ -246,7 +246,7 @@ func (p *pbft) dealLocalTransFer(t meta.Transaction) meta.Transaction {
 		log.Infof("准备创建账户。")
 		newAccount := meta.Account{
 			Address:    toKey,
-			Balance:    10000,
+			Balance:    t.Value,
 			Data:       meta.AccountData{},
 			PrivateKey: nil,
 			PublicKey:  nil,
