@@ -203,6 +203,7 @@ func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
 				Data:       ad,
 				PublicKey:  PubKey,
 				PrivateKey: priKey,
+				IsContract: true,
 			}
 			accountB, _ := json.Marshal(account)
 			set := make(map[string]string)

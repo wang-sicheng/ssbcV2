@@ -8,9 +8,10 @@ type Account struct {
 	Data       AccountData `json:"data"`
 	PublicKey  []byte      `json:"publickey"`  //账户公钥
 	PrivateKey []byte      `json:"privatekey"` //账户私钥
+	IsContract bool		   `json:"iscontract"` // 是否是智能合约账户
 }
 
 type AccountData struct {
-	Code         string //合约代码
-	ContractName string //合约名称
+	Code         string 	`json:"code"`
+	ContractName string 	`json:"contractname"`
 }
