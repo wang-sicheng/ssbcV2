@@ -109,10 +109,10 @@ func postContract(ctx *gin.Context) {
 		err, errStr := GoModManage(contractName)
 		if err != nil {
 			//将文件夹删除
-			//err:=os.RemoveAll("./smart_contract/"+contractName)
-			//if err!=nil{
-			//	log.Error(err)
-			//}
+			err:=os.RemoveAll("./smart_contract/"+contractName)
+			if err!=nil{
+				log.Error(err)
+			}
 			hr := warpBadHttpResponse(errStr)
 			log.Error(err)
 			ctx.JSON(http.StatusBadRequest, hr)
@@ -249,6 +249,7 @@ func registerAccount(ctx *gin.Context) {
 		account,
 	}
 
+	// FaucetAccount -> 新账户 转账，方便测试
 	t := meta.Transaction{
 		From:      commonconst.FaucetAccountAddress,
 		To:        account,
@@ -358,30 +359,32 @@ func getAllAccounts(ctx *gin.Context) {
 
 //提交一笔交易
 func postTran(ctx *gin.Context) {
+	b, _ := ctx.GetRawData()
+	log.Infof("[client] 收到一笔交易: %s\n", string(b))
+
 	pt := meta.PostTran{}
-	err := ctx.ShouldBind(&pt)
+	//err := ctx.ShouldBind(&pt)
+	err := json.Unmarshal(b, &pt)
+	//err := ctx.BindJSON(&pt)
 	if err != nil {
 		log.Error("[postTran],json decode err:", err)
 	}
-	// 确保账户已存在
-	addressExist := false
-	_, fromAddressExists := commonconst.Accounts[pt.From]
-	_, toAddressExists := commonconst.Accounts[pt.To]
-	if (pt.From == commonconst.FaucetAccountAddress || fromAddressExists) && toAddressExists {
-		addressExist = true
-	}
-	if !addressExist {
+
+	// 检查账户是否存在
+	if !checkAccountExists(&pt) {
 		hr := warpGoodHttpResponse("账户不存在")
+		log.Infof("账户不存在\n")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
 
 	//将args解析
 	args := make(map[string]string)
-	//err=json.Unmarshal([]byte(pt.Args),&args)
-	//if err!=nil{
-	//	log.Error("[postTran] json err:",err)
-	//}
+	err=json.Unmarshal([]byte(pt.Args),&args)
+	if err!=nil{
+		log.Error("[postTran] json err:",err)
+	}
+	log.Infof("合约参数：%v\n", args)
 	t := meta.Transaction{
 		From:      pt.From,
 		To:        pt.To,
@@ -510,4 +513,15 @@ func warpHttpResponse(status int, data interface{}) meta.HttpResponse {
 		Data:       data,
 	}
 	return res
+}
+
+func checkAccountExists(pt *meta.PostTran) bool {
+	// 确保账户已存在
+	addressExist := false
+	_, fromAddressExists := commonconst.Accounts[pt.From]
+	_, toAddressExists := commonconst.Accounts[pt.To]
+	if (pt.From == commonconst.FaucetAccountAddress || fromAddressExists) && toAddressExists {
+		addressExist = true
+	}
+	return addressExist
 }

@@ -20,4 +20,4 @@ npm run dev
 ```
 
 * 通过 http://localhost:9528/，即可访问后端
-
+* 运行 Docker.app（用于智能合约）

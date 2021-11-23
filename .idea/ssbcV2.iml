@@ -10,7 +10,6 @@
       <excludeFolder url="file://$MODULE_DIR$/smart_contract/123123123" />
       <excludeFolder url="file://$MODULE_DIR$/smart_contract/test0821" />
       <excludeFolder url="file://$MODULE_DIR$/db" />
-      <excludeFolder url="file://$MODULE_DIR$/smart_contract" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -10,6 +10,7 @@ import (
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/util"
+	"github.com/ssbcV2/smart_contract"
 	"io/ioutil"
 	"net"
 	"strconv"
@@ -114,6 +115,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 	//Step2：主节点需要先将交易存储至临时的交易池，待交易池满，打包为区块进行PBFT共识
 	transMsg := r.Content
 	trans := meta.Transaction{}
+	log.Infof("交易信息：%v\n", transMsg)
 	err = json.Unmarshal([]byte(transMsg), &trans)
 	util.DealJsonErr("handleClientRequest", err)
 	//step3：主节点对交易进行验签，验签不通过的丢弃
@@ -209,15 +211,17 @@ func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
 			t.Data.Set = set
 		} else {
 			//合约调用处理--调用智能合约产生读写集
-			//err,res:=smart_contract.CallContract(t.Contract,t.Method,t.Args)
-			//if err!=nil{
-			//	log.Error("合约调用失败")
-			//	//调用失败
-			//}else {
-			//	//交易的data字段赋值
-			//	t.Data.Read=res.Read
-			//	t.Data.Set=res.Set
-			//}
+			t.Args["sender"] = t.From
+			log.Infof("调用合约：%v，方法：%v，参数：%v\n", t.Contract, t.Method, t.Args)
+			err,res:=smart_contract.CallContract(t.Contract, t.Method, t.Args)
+			if err!=nil{
+				log.Error("合约调用失败")
+				//调用失败
+			}else {
+				//交易的data字段赋值
+				t.Data.Read=res.Read
+				t.Data.Set=res.Set
+			}
 		}
 	} else {
 		//非智能合约调用交易-->即简单的转账交易(而且是简单的本链转账交易)
@@ -505,16 +509,18 @@ func (p *pbft) refreshState(b meta.Block) {
 	for _, tx := range txs {
 		if tx.To == commonconst.ContractDeployAddress && p.node.nodeID == "N0" {
 			//部署合约
-			//contractName:=tx.Contract
+			contractName:=tx.Contract
 			//生成build地址
-			//path:="./smart_contract/"+contractName+"/"
-			//smart_contract.BuildAndRun(path,contractName)
+			path:="./smart_contract/"+contractName+"/"
+			smart_contract.BuildAndRun(path,contractName)
 		}
 		set := tx.Data.Set
 
 		delete(set, commonconst.FaucetAccountAddress)
 		for k, v := range set {
-			if k != "" {
+			if k == "transfer" {
+
+			} else if k != "" {
 				levelDB.DBPut(k, []byte(v))
 				account := meta.Account{}
 				_ = json.Unmarshal([]byte(v), &account)
