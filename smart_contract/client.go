@@ -20,6 +20,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 )
 
@@ -41,12 +43,17 @@ func BuildAndRun(path string, name string) {
 	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	//defer cancel()
 
-	//先压缩源代码文件
-	tar, err := archive.TarWithOptions(path, &archive.TarOptions{})
-	log.Info("合约编译镜像地址为：", path)
 	//获取当前程序执行的路径
 	file, _ := os.Getwd()
 	log.Info("当前程序执行路径:", file)
+	if runtime.GOOS == "windows" {
+		path = filepath.FromSlash(path)
+	}
+	path = file + path
+	//先压缩源代码文件
+	tar, err := archive.TarWithOptions(path, &archive.TarOptions{})
+	log.Info("合约编译镜像地址为：", path)
+
 	if err != nil {
 		log.Info("tar err:", err)
 	}

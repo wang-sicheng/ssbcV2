@@ -512,7 +512,7 @@ func (p *pbft) refreshState(b meta.Block) {
 			//部署合约
 			contractName:=tx.Contract
 			//生成build地址
-			path:="./smart_contract/"+contractName+"/"
+			path:="/smart_contract/"+contractName+"/"
 			smart_contract.BuildAndRun(path,contractName)
 		}
 		set := tx.Data.Set
