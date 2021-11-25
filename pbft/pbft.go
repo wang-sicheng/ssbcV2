@@ -214,15 +214,15 @@ func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
 			//合约调用处理--调用智能合约产生读写集
 			t.Args["sender"] = t.From
 			log.Infof("调用合约：%v，方法：%v，参数：%v\n", t.Contract, t.Method, t.Args)
-			err,res:=smart_contract.CallContract(t.Contract, t.Method, t.Args)
-			if err!=nil{
-				log.Error("合约调用失败")
-				//调用失败
-			}else {
-				//交易的data字段赋值
-				t.Data.Read=res.Read
-				t.Data.Set=res.Set
-			}
+			go smart_contract.CallContract(t.Contract, t.Method, t.Args)
+			//if err!=nil{
+			//	log.Error("合约调用失败")
+			//	//调用失败
+			//}else {
+			//	//交易的data字段赋值
+			//	t.Data.Read=res.Read
+			//	t.Data.Set=res.Set
+			//}
 		}
 	} else {
 		//非智能合约调用交易-->即简单的转账交易(而且是简单的本链转账交易)

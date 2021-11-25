@@ -114,7 +114,7 @@ func postTran(from, to string, value int) {
 		Method: "method",
 		Dest: "dest",
 		Sign: "",
-		Args: "",
+		Args: "{}",
 	}
 	jsons,_:=json.Marshal(info)
 	result :=string(jsons)
