@@ -56,3 +56,5 @@ const VRFThreshold = 1
 
 const LocalChainId = "ssbc"
 const LocalChainId2 = "ssbc2"
+
+const PostTranSuccess = "PostTranSuccess"	// 必须与前端消息相同

@@ -370,10 +370,10 @@ func postTran(ctx *gin.Context) {
 		log.Error("[postTran],json decode err:", err)
 	}
 
-	// 检查账户是否存在
-	if !checkAccountExists(&pt) {
-		hr := warpGoodHttpResponse("账户不存在")
-		log.Infof("账户不存在\n")
+	// 检查交易参数
+	if msg, ok :=  checkTranParameters(&pt); !ok {
+		hr := warpGoodHttpResponse(msg)
+		log.Infof(msg + "\n")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
@@ -425,7 +425,7 @@ func postTran(ctx *gin.Context) {
 	//默认N0为主节点，直接把请求信息发送至N0
 	network.TCPSend(msg, commonconst.NodeTable["N0"])
 	//返回提交成功
-	hr := warpGoodHttpResponse("Post Successfully!")
+	hr := warpGoodHttpResponse(commonconst.PostTranSuccess)
 	ctx.JSON(http.StatusOK, hr)
 }
 
@@ -496,6 +496,7 @@ func warpGoodHttpResponse(data interface{}) meta.HttpResponse {
 	res := meta.HttpResponse{
 		StatusCode: http.StatusOK,
 		Data:       data,
+		Code: 		20000,
 	}
 	return res
 }
@@ -515,13 +516,43 @@ func warpHttpResponse(status int, data interface{}) meta.HttpResponse {
 	return res
 }
 
-func checkAccountExists(pt *meta.PostTran) bool {
-	// 确保账户已存在
-	addressExist := false
-	_, fromAddressExists := commonconst.Accounts[pt.From]
-	_, toAddressExists := commonconst.Accounts[pt.To]
-	if (pt.From == commonconst.FaucetAccountAddress || fromAddressExists) && toAddressExists {
-		addressExist = true
+// 检查交易参数
+func checkTranParameters(pt *meta.PostTran) (string, bool) {
+	if pt.From == "" {
+		return "发起地址不能为空", false
 	}
-	return addressExist
+
+	if pt.From == pt.To {
+		return "发起地址和接收地址不能相同", false
+	}
+
+	if pt.PublicKey == "" {
+		return "公钥不能为空", false
+	}
+
+	// 调用合约
+	if pt.Contract != "" {
+		if pt.Method == "" {
+			return "方法不能为空", false
+		}
+		return "", true
+	}
+
+	// 转账交易
+	if pt.Value <= 0 {
+		return "转账金额必须为正整数", false
+	}
+
+	// 确保发起地址已存在
+	_, fromAddressExists := commonconst.Accounts[pt.From]
+	if !fromAddressExists {
+		return "发起地址不存在", false
+	}
+
+	// 确保接收地址已存在
+	_, toAddressExists := commonconst.Accounts[pt.To]
+	if !toAddressExists {
+		return "接收地址不存在", false
+	}
+	return "", true
 }
