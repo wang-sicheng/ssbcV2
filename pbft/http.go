@@ -248,6 +248,8 @@ func registerAccount(ctx *gin.Context) {
 		string(pubKey),
 		account,
 	}
+	// client 存储账户的私钥
+	levelDB.DBPut(account + commonconst.AccountsPrivateKeySuffix, priKey)
 
 	// FaucetAccount -> 新账户 转账，方便测试
 	t := meta.Transaction{
@@ -351,6 +353,8 @@ func getAllAccounts(ctx *gin.Context) {
 		account := meta.Account{}
 		accountBytes := levelDB.DBGet(address)
 		_ = json.Unmarshal(accountBytes, &account)
+		// 私钥从 client 本地获取
+		account.PrivateKey = string(levelDB.DBGet(address + commonconst.AccountsPrivateKeySuffix))
 		all = append(all, account)
 	}
 	hr := warpGoodHttpResponse(all)

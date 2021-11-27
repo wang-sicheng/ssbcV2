@@ -201,8 +201,8 @@ func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
 				Address:    addr,
 				Balance:    0,
 				Data:       ad,
-				PublicKey:  PubKey,
-				PrivateKey: priKey,
+				PublicKey:  string(PubKey),
+				PrivateKey: string(priKey),
 				IsContract: true,
 			}
 			accountB, _ := json.Marshal(account)
@@ -249,8 +249,8 @@ func (p *pbft) dealLocalTransFer(t meta.Transaction) meta.Transaction {
 			Address:    toKey,
 			Balance:    t.Value,
 			Data:       meta.AccountData{},
-			PrivateKey: nil,
-			PublicKey:  nil,
+			PrivateKey: "",
+			PublicKey:  t.PublicKey,
 		}
 		newAccountBytes, _ := json.Marshal(newAccount)
 		levelDB.DBPut(to, newAccountBytes)

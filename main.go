@@ -31,8 +31,8 @@ func main() {
 			Address:    commonconst.FaucetAccountAddress,
 			Balance:    1 << 48,
 			Data:       meta.AccountData{},
-			PrivateKey: nil,
-			PublicKey:  nil,
+			PrivateKey: "",
+			PublicKey:  "",
 		}
 		faucetAccountBytes, _ := json.Marshal(faucetAccount)
 		levelDB.DBPut(commonconst.FaucetAccountAddress, faucetAccountBytes)
