@@ -43,6 +43,8 @@ type Block struct {
 	Signature  []byte
 	Hash       []byte
 	TX         []Transaction
+	StateRoot  []byte
+	eventRoot  []byte
 }
 
 type BlockHeader struct {

@@ -15,7 +15,10 @@ require (
 	github.com/hyperledger/fabric-protos-go v0.0.0-20210520141515-88b9de28f790
 	github.com/libp2p/go-libp2p v0.14.0
 	github.com/libp2p/go-libp2p-core v0.8.5
+	github.com/magiconair/properties v1.8.1
 	github.com/moby/sys/mount v0.3.0 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211208084138-3ce80d953535
 	github.com/syndtr/goleveldb v1.0.0
+	gotest.tools v2.2.0+incompatible
 )

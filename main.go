@@ -6,6 +6,7 @@ import (
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
+	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/pbft"
@@ -20,6 +21,7 @@ func main() {
 		log.Error("输入的参数有误！")
 	}
 	nodeID := os.Args[1]
+	merkle.StatePath = "../levelDB/db/path/statedb"+nodeID // 账户数据暂时使用单独的数据库存储
 	//数据库连接
 	levelDB.InitDB(nodeID)
 
