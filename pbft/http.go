@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/gin-gonic/gin"
+	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
@@ -294,24 +295,6 @@ func registerAccount(ctx *gin.Context) {
 	//返回提交成功
 	hr := warpGoodHttpResponse(res)
 	ctx.JSON(http.StatusOK, hr)
-
-	// 创建余额为100000的新用户
-	//newAccount := meta.Account{
-	//	Address: account,
-	//	Balance: 100000,
-	//	Data: meta.AccountData{},
-	//	PrivateKey: nil,
-	//	PublicKey: nil,
-	//}
-	//newAccountBytes, _ := json.Marshal(newAccount)
-	//levelDB.DBPut(account, newAccountBytes)
-	//
-	//commonconst.Accounts = append(commonconst.Accounts, newAccount.Address)
-	//accountsBytes, _ := json.Marshal(commonconst.Accounts)
-	//levelDB.DBPut(commonconst.AccountsKey, accountsBytes)
-	//
-	//hr:= warpGoodHttpResponse(res)
-	//ctx.JSON(http.StatusOK,hr)
 }
 
 //链上信息query服务
@@ -349,10 +332,8 @@ func getAllTrans(ctx *gin.Context) {
 
 func getAllAccounts(ctx *gin.Context) {
 	var all []meta.Account
-	for address := range commonconst.Accounts {
-		account := meta.Account{}
-		accountBytes := levelDB.DBGet(address)
-		_ = json.Unmarshal(accountBytes, &account)
+	for _, address := range account.GetTotalAddress() {
+		account := account.GetAccount(address)
 		// 私钥从 client 本地获取
 		account.PrivateKey = string(levelDB.DBGet(address + commonconst.AccountsPrivateKeySuffix))
 		all = append(all, account)
@@ -548,14 +529,12 @@ func checkTranParameters(pt *meta.PostTran) (string, bool) {
 	}
 
 	// 确保发起地址已存在
-	_, fromAddressExists := commonconst.Accounts[pt.From]
-	if !fromAddressExists {
+	if !account.ContainsAddress(pt.From) {
 		return "发起地址不存在", false
 	}
 
 	// 确保接收地址已存在
-	_, toAddressExists := commonconst.Accounts[pt.To]
-	if !toAddressExists {
+	if !account.ContainsAddress(pt.To) {
 		return "接收地址不存在", false
 	}
 	return "", true

@@ -9,7 +9,7 @@ var db *leveldb.DB
 var err error
 
 func InitDB(path string) {
-	db, err = leveldb.OpenFile("db/path/"+path, nil)
+	db, err = leveldb.OpenFile("levelDB/db/path/"+path, nil)
 	if err != nil {
 		log.Error("db init err:", err)
 	}

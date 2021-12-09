@@ -3,9 +3,9 @@ package pbft
 import (
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
-	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/util"
@@ -77,22 +77,26 @@ func clientHandleTcpMsg(content []byte, conn net.Conn) {
 	}
 }
 
+// 该refreshState是client使用的，client不参与共识，但是其他节点达成共识后会把区块发送给client
+// 逻辑有点奇怪，后续应该会重新设计
 func refreshState(b meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
-	//每一笔交易写集进行更新
+	// client 处理每一笔交易
 	for _, tx := range txs {
-		set := tx.Data.Set
-		delete(set, commonconst.FaucetAccountAddress)
-		for k, v := range set {
-			if k != "" {
-				levelDB.DBPut(k, []byte(v))
-				account := meta.Account{}
-				_ = json.Unmarshal([]byte(v), &account)
-				commonconst.Accounts[account.Address] = struct{}{}
-				accountsBytes, _ := json.Marshal(commonconst.Accounts)
-				levelDB.DBPut(commonconst.AccountsKey, accountsBytes)
+		if tx.Contract != "" {
+			if tx.To == commonconst.ContractDeployAddress {
+				account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract)
+			} else {
+				// 合约执行后，如何同步给client
 			}
+		} else {
+			// 转账交易
+			if tx.From == commonconst.FaucetAccountAddress {
+				account.CreateAccount(tx.To, tx.PublicKey, 0)
+			}
+			account.SubBalance(tx.From, tx.Value)
+			account.AddBalance(tx.To, tx.Value)
 		}
 	}
 }
