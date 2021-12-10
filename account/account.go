@@ -25,7 +25,7 @@ func init() {
 }
 
 // 创建普通账户
-func CreateAccount(address, publicKey string, balance int) {
+func CreateAccount(address, publicKey string, balance int) meta.Account{
 	account := meta.Account{
 		Address:    address,
 		Balance:    balance,
@@ -36,10 +36,11 @@ func CreateAccount(address, publicKey string, balance int) {
 	state.Accounts[address] = account
 
 	PutIntoDisk(state.Accounts)
+	return account
 }
 
 // 创建智能合约账户
-func CreateContract(address, publicKey, code, name string) {
+func CreateContract(address, publicKey, code, name string) meta.Account{
 	contract := meta.Account{
 		Address: address,
 		Balance: 0,
@@ -54,9 +55,10 @@ func CreateContract(address, publicKey, code, name string) {
 	state.Accounts[name] = contract
 
 	PutIntoDisk(state.Accounts)
+	return contract
 }
 
-func SubBalance(sender string, amount int) {
+func SubBalance(sender string, amount int) meta.Account{
 	senderAccount := state.Accounts[sender]
 	if senderAccount.Balance < amount {		// 调用SubBalance前会先调用CanTransfer，理论上不会出现余额不足的情况
 		log.Infof("[SubBalance]: Insufficient balance.")
@@ -65,14 +67,16 @@ func SubBalance(sender string, amount int) {
 	state.Accounts[sender] = senderAccount
 
 	PutIntoDisk(state.Accounts)
+	return senderAccount
 }
 
-func AddBalance(receiver string, amount int) {
+func AddBalance(receiver string, amount int) meta.Account{
 	receiverAccount := state.Accounts[receiver]
 	receiverAccount.Balance += amount
 	state.Accounts[receiver] = receiverAccount
 
 	PutIntoDisk(state.Accounts)
+	return receiverAccount
 }
 
 // 判断交易发起方是否有足够余额

@@ -7,6 +7,7 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/util"
@@ -500,10 +501,11 @@ func (p *pbft) handleCommit(content []byte) {
 			newBC := new(meta.Block)
 			err = json.Unmarshal([]byte(newBCMsg), newBC)
 			util.DealJsonErr("handleCommit", err)
+			//先更新状态树，得到stateRoot，再上链
+			p.refreshState(newBC)
+
 			bcs = append(bcs, *newBC)
 			chain.StoreBlockChain(bcs)
-			//新区块上链后状态数据库进行更新
-			p.refreshState(*newBC)
 			//给客户端reply
 			log.Info("正在reply客户端 ...")
 			tcpMsg := meta.TCPMessage{
@@ -519,20 +521,28 @@ func (p *pbft) handleCommit(content []byte) {
 }
 
 // 状态数据库更新
-func (p *pbft) refreshState(b meta.Block) {
+func (p *pbft) refreshState(b *meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
+	// 状态树的版本是区块的高度
+	ver := b.Height
+	// 需要更新到状态树的account
+	var accounts []meta.Account
 	// 执行每一笔交易
 	for _, tx := range txs {
-		p.execute(tx)
+		p.execute(tx, &accounts)
 	}
+	stateRootHash, err := merkle.UpdateAccountState(accounts, uint64(ver))
+	if err != nil {
+		log.Error(err)
+	}
+	b.StateRoot = stateRootHash.Bytes()
 }
 
-func (p *pbft) execute(tx meta.Transaction) {
+func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 	if tx.Contract != "" {
 		if tx.To == commonconst.ContractDeployAddress {
-			account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract)
-
+			*accounts  = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
 			// 目前是单机版本，合约只由N0节点部署
 			if p.node.nodeID == "N0" {
 				//部署合约
@@ -553,10 +563,9 @@ func (p *pbft) execute(tx meta.Transaction) {
 	} else {
 		// 转账交易
 		if tx.From == commonconst.FaucetAccountAddress {
-			account.CreateAccount(tx.To, tx.PublicKey, 0)
+			*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, 0))
 		}
-		account.SubBalance(tx.From, tx.Value)
-		account.AddBalance(tx.To, tx.Value)
+		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	}
 }
 
