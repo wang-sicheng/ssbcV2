@@ -238,8 +238,10 @@ func registerAccount(ctx *gin.Context) {
 	//账户地址
 	//将公钥进行hash
 	pubHash, _ := util.CalculateHash(pubKey)
-	//将公钥的前20位作为账户地址
-	account := hex.EncodeToString(pubHash[:20])
+	log.Infof("public hash len: %d", len(pubHash))
+	//将公钥hash作为账户地址,256位
+	account := hex.EncodeToString(pubHash)
+	log.Infof("account address len: %d", len(account))
 	res := struct {
 		PrivateKey     string
 		PublicKey      string

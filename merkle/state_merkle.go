@@ -1,6 +1,7 @@
 package merkle
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/rjkris/go-jellyfish-merkletree/common"
@@ -20,7 +21,10 @@ func UpdateAccountState(accounts []meta.Account, version uint64) (common.HashVal
 	}
 	var kvs []jellyfish.ValueSetItem
 	for _, account := range accounts {
-		k := common.BytesToHash([]byte(account.Address))
+		addressBytes, _ := hex.DecodeString(account.Address)
+		log.Infof("after hex decode, address len: %d", len(addressBytes))
+		//k := common.BytesToHash([]byte(account.Address))
+		k := common.BytesToHash(addressBytes)
 		accountBytes, _ := json.Marshal(account)
 		kvs = append(kvs, jellyfish.ValueSetItem{
 			k,
@@ -41,7 +45,8 @@ func getProofValue(address string, version uint64) (meta.Account, jellyfish.Spar
 	db := jellyfish.NewTreeStore(StatePath)
 	defer db.Db.Close()
 	tree := jellyfish.JfMerkleTree{db, nil}
-	k := common.BytesToHash([]byte(address))
+	addressBytes, _ := hex.DecodeString(address)
+	k := common.BytesToHash(addressBytes)
 	proofValue, proof := tree.GetWithProof(k, jellyfish.Version(version))
 	var account meta.Account
 	err := json.Unmarshal(proofValue.GetValue(), &account)
@@ -54,7 +59,8 @@ func getProofValue(address string, version uint64) (meta.Account, jellyfish.Spar
 
 // 存在性验证
 func ProofVerify(rootHash common.HashValue, proof jellyfish.SparseMerkleProof, address string, value meta.Account) (bool, error) {
-	k := common.BytesToHash([]byte(address))
+	addressBytes, _ := hex.DecodeString(address)
+	k := common.BytesToHash(addressBytes)
 	accountBytes, err := json.Marshal(value)
 	if err != nil {
 		log.Errorf("account marshal error: %s", err)

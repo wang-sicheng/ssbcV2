@@ -1224,6 +1224,8 @@ github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211207124115-d9a4a2a17c30 h1:
 github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211207124115-d9a4a2a17c30/go.mod h1:299lG+rwGtJsntII5iSsf3Q/+vfYWgqwiBLnsOCEvUA=
 github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211208084138-3ce80d953535 h1:cGPu2596UCF6zRHjUcyWMF+nlVcdwExQkXe3wR4zSds=
 github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211208084138-3ce80d953535/go.mod h1:299lG+rwGtJsntII5iSsf3Q/+vfYWgqwiBLnsOCEvUA=
+github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211214081745-22621b3119b5 h1:LvSCBNVU6baBBGaGn7zREQLBfzTt7QoloCDfGXAiork=
+github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211214081745-22621b3119b5/go.mod h1:299lG+rwGtJsntII5iSsf3Q/+vfYWgqwiBLnsOCEvUA=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=

@@ -1,12 +1,26 @@
 package merkle
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/rjkris/go-jellyfish-merkletree/common"
 	"github.com/ssbcV2/meta"
 	"gotest.tools/assert"
+	"math/rand"
 	"testing"
+	"time"
 )
+
+func RandString(len int) string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	bytes := make([]byte, len)
+	for i := 0; i < len; i++ {
+		b := r.Intn(26) + 65
+		bytes[i] = byte(b)
+	}
+	return string(bytes)
+}
 
 func TestOneUpdate(t *testing.T)  {
 	var accounts []meta.Account
@@ -26,13 +40,15 @@ func TestOneUpdate(t *testing.T)  {
 
 func TestUpdateAndVerify(t *testing.T)  {
 	var accounts []meta.Account
-	nums := 10
+	nums := 1000
 	//var rootHashs []common.HashValue
 	for i:=0; i < nums; i++ {
-		key := common.HashValue{}.Random().Bytes() // 随机数确保每次生成的key不同
+		//key := RandString(32)// 随机生成address
+		key := common.HashValue{}.Random().Bytes()
+		keyStr := hex.EncodeToString(key)
 		//t.Errorf("key: %s", string(key))
 		accounts = append(accounts, meta.Account{
-			Address:    string(key),
+			Address:    keyStr,
 			Balance:    100,
 			Data:       meta.AccountData{},
 			PublicKey:  "",
@@ -60,9 +76,9 @@ func TestUpdateAndVerify(t *testing.T)  {
 	for i:=0; i < nums; i++ {
 		account := accounts[i]
 		actualAccount, proof, _ := getProofValue(account.Address, uint64(0))
-		t.Errorf("actualAccount: %+v, address: %v", actualAccount, []byte(actualAccount.Address))
-		t.Errorf("account: %+v, address: %v", account, []byte(account.Address))
-		assert.Equal(t, actualAccount, account) // TODO:经json序列化后address发生变化，导致校验失败
+		t.Logf("actualAccount: %+v, address: %v", actualAccount, []byte(actualAccount.Address))
+		t.Logf("account: %+v, address: %v", account, []byte(account.Address))
+		assert.Equal(t, actualAccount, account)
 		verifyRes, _ := ProofVerify(rootHash, proof, account.Address, account)
 		assert.Equal(t, verifyRes, true)
 	}
@@ -96,4 +112,13 @@ func TestEqual(t *testing.T)  {
 	_ = json.Unmarshal(accountBytes, &newAccount1)
 	t.Logf("account1: %v, new: %v", []byte(account1.Address), []byte(newAccount1.Address))
 	assert.Equal(t, account1.Address, newAccount1.Address)
+}
+
+func TestByteList(t *testing.T)  {
+	key := common.HashValue{}.Random().Bytes()
+	var byteArray [32]byte
+	for i, v := range key {
+		fmt.Println(i)
+		byteArray[i] = v
+	}
 }
