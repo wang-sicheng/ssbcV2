@@ -22,7 +22,7 @@ func RandString(len int) string {
 	return string(bytes)
 }
 
-func TestOneUpdate(t *testing.T)  {
+func TestOneUpdate(t *testing.T) {
 	var accounts []meta.Account
 	accounts = append(accounts, meta.Account{
 		Address:    "jklirogregerg",
@@ -38,11 +38,11 @@ func TestOneUpdate(t *testing.T)  {
 	}
 }
 
-func TestUpdateAndVerify(t *testing.T)  {
+func TestUpdateAndVerify(t *testing.T) {
 	var accounts []meta.Account
 	nums := 1000
 	//var rootHashs []common.HashValue
-	for i:=0; i < nums; i++ {
+	for i := 0; i < nums; i++ {
 		//key := RandString(32)// 随机生成address
 		key := common.HashValue{}.Random().Bytes()
 		keyStr := hex.EncodeToString(key)
@@ -73,7 +73,7 @@ func TestUpdateAndVerify(t *testing.T)  {
 	//	verifyRes, _ := ProofVerify(rootHashs[ver], proof, account.Address, account)
 	//	assert.Equal(t, verifyRes, true)
 	//}
-	for i:=0; i < nums; i++ {
+	for i := 0; i < nums; i++ {
 		account := accounts[i]
 		actualAccount, proof, _ := getProofValue(account.Address, uint64(0))
 		t.Logf("actualAccount: %+v, address: %v", actualAccount, []byte(actualAccount.Address))
@@ -84,7 +84,7 @@ func TestUpdateAndVerify(t *testing.T)  {
 	}
 }
 
-func TestEqual(t *testing.T)  {
+func TestEqual(t *testing.T) {
 
 	//account2 := meta.Account{
 	//	Address:    "123",
@@ -114,7 +114,7 @@ func TestEqual(t *testing.T)  {
 	assert.Equal(t, account1.Address, newAccount1.Address)
 }
 
-func TestByteList(t *testing.T)  {
+func TestByteList(t *testing.T) {
 	key := common.HashValue{}.Random().Bytes()
 	var byteArray [32]byte
 	for i, v := range key {

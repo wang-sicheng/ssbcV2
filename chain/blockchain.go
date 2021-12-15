@@ -30,14 +30,14 @@ func StoreBlockChain(bc []meta.Block) {
 	//缓存存储
 	//redis.SetIntoRedis(commonconst.BlockChainKey, string(bcBytes))
 	//db存储
-	levelDB.DBPut(commonconst.BlockChainKey, bcBytes)
+	levelDB.DBPut(common.BlockChainKey, bcBytes)
 }
 
 //获取到当前区块链
 func GetCurrentBlockChain() []meta.Block {
 	//bcStr, _ := redis.GetFromRedis(commonconst.BlockChainKey)
 	//更新版本从db中读取区块链
-	bcByte := levelDB.DBGet(commonconst.BlockChainKey)
+	bcByte := levelDB.DBGet(common.BlockChainKey)
 	bc := make([]meta.Block, 0)
 	if bcByte == nil {
 		return bc

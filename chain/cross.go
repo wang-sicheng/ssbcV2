@@ -60,7 +60,7 @@ func PackCrossReceipt(t meta.CrossTran, height int, sequence int) meta.CrossTran
 		UserCertificate: uc,
 		TransId:         txs[sequence].Id,
 		Type:            t.Type,
-		Status:          commonconst.StatusSuccess,
+		Status:          common.StatusSuccess,
 		Resp:            resp,
 		Proof:           pf,
 	}
@@ -92,7 +92,7 @@ func PackACrossTransaction(t meta.CrossTran, height int, sequence int) meta.Cros
 		UserCertificate: uc,
 		TransId:         txs[sequence].Id,
 		Type:            t.Type,
-		Status:          commonconst.StatusDeal,
+		Status:          common.StatusDeal,
 		Param:           meta.CrossTranParam{},
 		Proof:           pf,
 	}

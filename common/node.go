@@ -1,4 +1,4 @@
-package commonconst
+package common
 
 //客户端与节点通信的监听地址
 const ClientToNodeAddr = "127.0.0.1:8888"

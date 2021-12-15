@@ -10,8 +10,8 @@ import (
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
-	"github.com/ssbcV2/util"
 	"github.com/ssbcV2/smart_contract"
+	"github.com/ssbcV2/util"
 	"io/ioutil"
 	"net"
 	"strconv"
@@ -115,15 +115,15 @@ func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 	//先解析消息
 	msg := network.ParseTCPMsg(data)
 	//根据消息类别选择handle函数
-	if strings.HasPrefix(msg.Type, commonconst.PBFT) {
+	if strings.HasPrefix(msg.Type, common.PBFT) {
 		p.handlePBFTMsg(msg)
 	}
 	//主节点会接收到其他节点的区块链同步消息
-	if msg.Type == commonconst.BlockSynReqMsg {
+	if msg.Type == common.BlockSynReqMsg {
 		network.HandleBlockSynReqMsg(msg, conn)
 	}
 	//其他节点会接收到主节点的区块链同步回复
-	if msg.Type == commonconst.BlockSynResMsg {
+	if msg.Type == common.BlockSynResMsg {
 		network.HandleBlockSynResMsg(msg, conn)
 	}
 }
@@ -131,13 +131,13 @@ func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 func (p *pbft) handlePBFTMsg(msg meta.TCPMessage) {
 	//根据消息命令调用不同的功能
 	switch msg.Type {
-	case commonconst.PBFTRequest:
+	case common.PBFTRequest:
 		p.handleClientRequest(msg.Content)
-	case commonconst.PBFTPrePrepare:
+	case common.PBFTPrePrepare:
 		p.handlePrePrepare(msg.Content)
-	case commonconst.PBFTPrepare:
+	case common.PBFTPrepare:
 		p.handlePrepare(msg.Content)
-	case commonconst.PBFTCommit:
+	case common.PBFTCommit:
 		p.handleCommit(msg.Content)
 	}
 }
@@ -188,7 +188,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 	index := len(bc)
 	p.transPool[index] = append(p.transPool[index], trans)
 	//满足交易数则打包新区块
-	if len(p.transPool[index]) == commonconst.TxsThreshold {
+	if len(p.transPool[index]) == common.TxsThreshold {
 		//主节点接收到的交易已经到达阈值，打包新区块进行PBFT共识
 		newBlock := chain.GenerateNewBlock(p.transPool[index])
 		//主节点对打包区块进行签名
@@ -216,7 +216,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 		log.Info("正在向其他节点进行进行PrePrepare广播 ...")
 		//进行PrePrepare广播
 		msg := meta.TCPMessage{
-			Type:    commonconst.PBFTPrePrepare,
+			Type:    common.PBFTPrePrepare,
 			Content: b,
 		}
 		p.broadcast(msg)
@@ -409,7 +409,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		//进行准备阶段的广播
 		log.Info("正在进行Prepare广播 ...")
 		msg := meta.TCPMessage{
-			Type:    commonconst.PBFTPrepare,
+			Type:    common.PBFTPrepare,
 			Content: bPre,
 		}
 		p.broadcast(msg)
@@ -444,9 +444,9 @@ func (p *pbft) handlePrepare(content []byte) {
 		//因为主节点不会发送Prepare，所以不包含自己
 		specifiedCount := 0
 		if p.node.nodeID == "N0" {
-			specifiedCount = commonconst.NodeCount / 3 * 2
+			specifiedCount = common.NodeCount / 3 * 2
 		} else {
-			specifiedCount = (commonconst.NodeCount / 3 * 2) - 1
+			specifiedCount = (common.NodeCount / 3 * 2) - 1
 		}
 		//如果节点至少收到了2f个prepare的消息（包括自己）,并且没有进行过commit广播，则进行commit广播
 		p.lock.Lock()
@@ -481,7 +481,7 @@ func (p *pbft) handlePrepare(content []byte) {
 			//进行提交信息的广播
 			log.Info("正在进行commit广播")
 			msg := meta.TCPMessage{
-				Type:    commonconst.PBFTCommit,
+				Type:    common.PBFTCommit,
 				Content: bc,
 			}
 			p.broadcast(msg)
@@ -518,7 +518,7 @@ func (p *pbft) handleCommit(content []byte) {
 		}
 		//如果节点至少收到了2f+1个commit消息（包括自己）,并且节点没有回复过,并且已进行过commit广播，则提交信息至本地消息池，并reply成功标志至客户端！
 		p.lock.Lock()
-		if count >= commonconst.NodeCount/3*2 && !p.isReply[c.Digest] && p.isCommitBordcast[c.Digest] {
+		if count >= common.NodeCount/3*2 && !p.isReply[c.Digest] && p.isCommitBordcast[c.Digest] {
 			log.Info("本节点已收到至少2f + 1 个节点(包括本地节点)发来的Commit信息 ...")
 			//将消息信息，提交到本地消息池中！
 			localMessagePool = append(localMessagePool, p.messagePool[c.Digest].Message)
@@ -538,7 +538,7 @@ func (p *pbft) handleCommit(content []byte) {
 			//给客户端reply
 			log.Info("正在reply客户端 ...")
 			tcpMsg := meta.TCPMessage{
-				Type:    commonconst.PBFTReply,
+				Type:    common.PBFTReply,
 				Content: []byte(newBCMsg),
 			}
 			network.TCPSend(tcpMsg, p.messagePool[c.Digest].ClientAddr)
@@ -554,7 +554,7 @@ func (p *pbft) refreshState(b *meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
 	// 状态树的版本是区块的高度，版本号从0开始
-	ver := b.Height-1
+	ver := b.Height - 1
 	// 需要更新到状态树的account
 	var accounts []meta.Account
 	// 执行每一笔交易
@@ -571,18 +571,18 @@ func (p *pbft) refreshState(b *meta.Block) {
 func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 	switch tx.Type {
 	case meta.Register:
-		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, commonconst.InitBalance))
+		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
 	case meta.Transfer:
 		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		*accounts  = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
+		*accounts = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
 		// 目前是单机版本，合约只由N0节点部署
 		if p.node.nodeID == "N0" {
 			//部署合约
-			contractName:=tx.Contract
+			contractName := tx.Contract
 			//生成build地址
-			path:="/smart_contract/"+contractName+"/"
-			smart_contract.BuildAndRun(path,contractName)
+			path := "/smart_contract/" + contractName + "/"
+			smart_contract.BuildAndRun(path, contractName)
 		}
 	case meta.Invoke:
 		// 目前是单机版本，合约只由N0节点调用
@@ -628,11 +628,11 @@ func (p *pbft) sequenceIDAdd() {
 
 //向除自己外的其他节点进行广播
 func (p *pbft) broadcast(msg meta.TCPMessage) {
-	for i := range commonconst.NodeTable {
+	for i := range common.NodeTable {
 		if i == p.node.nodeID {
 			continue
 		}
-		go network.TCPSend(msg, commonconst.NodeTable[i])
+		go network.TCPSend(msg, common.NodeTable[i])
 	}
 }
 

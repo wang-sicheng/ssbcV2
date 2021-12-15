@@ -72,7 +72,7 @@ func GenerateVrfResult(msg string) (result meta.VRFResult) {
 		PK:          pkByte,
 		Proof:       proof,
 		Msg:         msg,
-		Count:       commonconst.VRFThreshold,
+		Count:       common.VRFThreshold,
 	}
 	return res
 }

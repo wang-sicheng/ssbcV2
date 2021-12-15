@@ -2,10 +2,10 @@ package meta
 
 // 交易类型
 const (
-	Transfer int = iota		// 0: 转账交易
-	Register				// 1: 注册账户
-	Publish 				// 2: 发布合约
-	Invoke					// 3: 调用合约
+	Transfer int = iota // 0: 转账交易
+	Register            // 1: 注册账户
+	Publish             // 2: 发布合约
+	Invoke              // 3: 调用合约
 )
 
 type Transaction struct {
@@ -22,7 +22,7 @@ type Transaction struct {
 	Hash      []byte            `json:"hash"`
 	PublicKey string            `json:"public_key"`
 	Sign      []byte            `json:"sign"`
-	Type	  int				`json:"type"`
+	Type      int               `json:"type"`
 }
 
 type TransactionData struct {
@@ -32,12 +32,12 @@ type TransactionData struct {
 }
 
 type PostTran struct {
-	From     string `json:"from"`
-	To       string `json:"to"`
-	Dest     string `json:"dest"`
-	Contract string `json:"contract"`
-	Method   string `json:"method"`
-	Args      string `json:"args"`
+	From       string `json:"from"`
+	To         string `json:"to"`
+	Dest       string `json:"dest"`
+	Contract   string `json:"contract"`
+	Method     string `json:"method"`
+	Args       string `json:"args"`
 	Value      int    `json:"value"`
 	PrivateKey string `json:"private_key"`
 	PublicKey  string `json:"public_key"`

@@ -47,7 +47,7 @@ func clientHttpListenV2() {
 	r.GET("/query", query)
 	//r.POST("/decrypt",decrypt)
 
-	r.Run(commonconst.ClientToUserAddr)
+	r.Run(common.ClientToUserAddr)
 }
 
 func Cors() gin.HandlerFunc {
@@ -110,8 +110,8 @@ func postContract(ctx *gin.Context) {
 		err, errStr := GoModManage(contractName)
 		if err != nil {
 			//将文件夹删除
-			err:=os.RemoveAll("./smart_contract/"+contractName)
-			if err!=nil{
+			err := os.RemoveAll("./smart_contract/" + contractName)
+			if err != nil {
 				log.Error(err)
 			}
 			hr := warpBadHttpResponse(errStr)
@@ -151,7 +151,7 @@ func sendNewContract(c meta.ContractPost) {
 	data.Code = c.Code
 	t := meta.Transaction{
 		From:      c.Account,
-		To:        commonconst.ContractDeployAddress,
+		To:        common.ContractDeployAddress,
 		Dest:      "",
 		Contract:  c.Name,
 		Method:    "",
@@ -173,7 +173,7 @@ func sendNewContract(c meta.ContractPost) {
 	//客户端需要把交易信息发送给主节点
 	r := new(Request)
 	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = commonconst.ClientToNodeAddr
+	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = getRandom()
 
 	tb, _ := json.Marshal(t)
@@ -184,11 +184,11 @@ func sendNewContract(c meta.ContractPost) {
 	}
 	//log.Info(string(br))
 	msg := meta.TCPMessage{
-		Type:    commonconst.PBFTRequest,
+		Type:    common.PBFTRequest,
 		Content: br,
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
-	network.TCPSend(msg, commonconst.NodeTable["N0"])
+	network.TCPSend(msg, common.NodeTable["N0"])
 }
 
 func GoModManage(contractName string) (err error, errStr string) {
@@ -253,7 +253,7 @@ func registerAccount(ctx *gin.Context) {
 		account,
 	}
 	// client 存储账户的私钥
-	levelDB.DBPut(account + commonconst.AccountsPrivateKeySuffix, priKey)
+	levelDB.DBPut(account+common.AccountsPrivateKeySuffix, priKey)
 
 	// 将交易类型设置为Register
 	t := meta.Transaction{
@@ -264,13 +264,13 @@ func registerAccount(ctx *gin.Context) {
 		Method:    "",
 		Args:      nil,
 		Data:      meta.TransactionData{},
-		Value:     commonconst.InitBalance,
+		Value:     common.InitBalance,
 		Id:        nil,
 		Timestamp: "",
 		Hash:      nil,
 		PublicKey: string(pubKey),
 		Sign:      nil,
-		Type: 	   meta.Register,
+		Type:      meta.Register,
 	}
 	//客户端在转发交易之前需要对交易进行签名
 	//先将交易进行hash
@@ -280,7 +280,7 @@ func registerAccount(ctx *gin.Context) {
 	//客户端需要把交易信息发送给主节点
 	r := new(Request)
 	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = commonconst.ClientToNodeAddr
+	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = getRandom()
 
 	tb, _ := json.Marshal(t)
@@ -291,11 +291,11 @@ func registerAccount(ctx *gin.Context) {
 	}
 	//log.Info(string(br))
 	msg := meta.TCPMessage{
-		Type:    commonconst.PBFTRequest,
+		Type:    common.PBFTRequest,
 		Content: br,
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
-	network.TCPSend(msg, commonconst.NodeTable["N0"])
+	network.TCPSend(msg, common.NodeTable["N0"])
 	//返回提交成功
 	hr := warpGoodHttpResponse(res)
 	ctx.JSON(http.StatusOK, hr)
@@ -339,7 +339,7 @@ func getAllAccounts(ctx *gin.Context) {
 	for _, address := range account.GetTotalAddress() {
 		account := account.GetAccount(address)
 		// 私钥从 client 本地获取
-		account.PrivateKey = string(levelDB.DBGet(address + commonconst.AccountsPrivateKeySuffix))
+		account.PrivateKey = string(levelDB.DBGet(address + common.AccountsPrivateKeySuffix))
 		all = append(all, account)
 	}
 	hr := warpGoodHttpResponse(all)
@@ -360,7 +360,7 @@ func postTran(ctx *gin.Context) {
 	}
 
 	// 检查交易参数
-	if msg, ok :=  checkTranParameters(&pt); !ok {
+	if msg, ok := checkTranParameters(&pt); !ok {
 		hr := warpGoodHttpResponse(msg)
 		log.Infof(msg + "\n")
 		ctx.JSON(http.StatusOK, hr)
@@ -369,9 +369,9 @@ func postTran(ctx *gin.Context) {
 
 	//将args解析
 	args := make(map[string]string)
-	err=json.Unmarshal([]byte(pt.Args),&args)
-	if err!=nil{
-		log.Error("[postTran] json err:",err)
+	err = json.Unmarshal([]byte(pt.Args), &args)
+	if err != nil {
+		log.Error("[postTran] json err:", err)
 	}
 	log.Infof("合约参数：%v\n", args)
 	t := meta.Transaction{
@@ -398,7 +398,7 @@ func postTran(ctx *gin.Context) {
 	//客户端需要把交易信息发送给主节点
 	r := new(Request)
 	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = commonconst.ClientToNodeAddr
+	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = getRandom()
 
 	tb, _ := json.Marshal(t)
@@ -409,13 +409,13 @@ func postTran(ctx *gin.Context) {
 	}
 	//log.Info(string(br))
 	msg := meta.TCPMessage{
-		Type:    commonconst.PBFTRequest,
+		Type:    common.PBFTRequest,
 		Content: br,
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
-	network.TCPSend(msg, commonconst.NodeTable["N0"])
+	network.TCPSend(msg, common.NodeTable["N0"])
 	//返回提交成功
-	hr := warpGoodHttpResponse(commonconst.PostTranSuccess)
+	hr := warpGoodHttpResponse(common.PostTranSuccess)
 	ctx.JSON(http.StatusOK, hr)
 }
 
@@ -486,7 +486,7 @@ func warpGoodHttpResponse(data interface{}) meta.HttpResponse {
 	res := meta.HttpResponse{
 		StatusCode: http.StatusOK,
 		Data:       data,
-		Code: 		20000,
+		Code:       20000,
 	}
 	return res
 }

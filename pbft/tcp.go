@@ -16,7 +16,7 @@ import (
 
 //客户端使用的tcp监听
 func clientTcpListen() {
-	listen, err := net.Listen("tcp", commonconst.ClientToNodeAddr)
+	listen, err := net.Listen("tcp", common.ClientToNodeAddr)
 	if err != nil {
 		log.Error(err)
 	}
@@ -57,7 +57,7 @@ func clientHandleTcpMsg(content []byte, conn net.Conn) {
 	msg := network.ParseTCPMsg(content)
 	//根据消息类别选择handle函数
 	switch msg.Type {
-	case commonconst.PBFTReply:
+	case common.PBFTReply:
 		bcs := chain.GetCurrentBlockChain()
 		newBC := new(meta.Block)
 		bc := msg.Content
@@ -71,7 +71,7 @@ func clientHandleTcpMsg(content []byte, conn net.Conn) {
 			refreshState(*newBC)
 		}
 	//接收来自主节点的区块链同步回复
-	case commonconst.BlockSynResMsg:
+	case common.BlockSynResMsg:
 		network.HandleBlockSynResMsg(msg, conn)
 	default:
 		log.Error("[clientHandleTcpMsg] invalid tcp msg type:", msg.Type)
@@ -84,7 +84,7 @@ func refreshState(b meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
 	// 状态树的版本是区块的高度，版本号从0开始
-	ver := b.Height-1
+	ver := b.Height - 1
 	// 需要更新到状态树的account
 	var accounts []meta.Account
 	// 执行每一笔交易
@@ -101,14 +101,13 @@ func refreshState(b meta.Block) {
 func clientExecute(tx meta.Transaction, accounts *[]meta.Account) {
 	switch tx.Type {
 	case meta.Register:
-		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, commonconst.InitBalance))
+		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
 	case meta.Transfer:
 		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		*accounts  = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
+		*accounts = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
 	case meta.Invoke:
 	default:
 		log.Infof("未知的交易类型")
 	}
 }
-

@@ -17,7 +17,7 @@ import (
 //获取到当前交易集合列表
 func GetCurrentTxs() []meta.Transaction {
 	txs := make([]meta.Transaction, 0)
-	txsStr, _ := redis.GetFromRedis(commonconst.TransActionsKey)
+	txsStr, _ := redis.GetFromRedis(common.TransActionsKey)
 	err := json.Unmarshal([]byte(txsStr), &txs)
 	if err != nil {
 		log.Info("GetCurrentTxs:json unmarshal failed:", err)
@@ -32,7 +32,7 @@ func StoreCurrentTx(tx meta.Transaction) {
 	curTxs = append(curTxs, tx)
 	txsByte, _ := json.Marshal(curTxs)
 	txsStr := string(txsByte)
-	redis.SetIntoRedis(commonconst.TransActionsKey, txsStr)
+	redis.SetIntoRedis(common.TransActionsKey, txsStr)
 }
 
 //重置当前交易列表
@@ -40,7 +40,7 @@ func ClearCurrentTxs() {
 	txs := make([]meta.Transaction, 0)
 	txsByte, _ := json.Marshal(txs)
 	txsStr := string(txsByte)
-	redis.SetIntoRedis(commonconst.TransActionsKey, txsStr)
+	redis.SetIntoRedis(common.TransActionsKey, txsStr)
 }
 
 //根据交易hash定位到所在区块的高度,以及该交易在交易列表中的序号

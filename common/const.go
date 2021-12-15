@@ -1,4 +1,4 @@
-package commonconst
+package common
 
 //锁定账户
 const LockedAccount = "lockedAccount"
@@ -57,4 +57,4 @@ const VRFThreshold = 1
 const LocalChainId = "ssbc"
 const LocalChainId2 = "ssbc2"
 
-const PostTranSuccess = "PostTranSuccess"	// 必须与前端消息相同
+const PostTranSuccess = "PostTranSuccess" // 必须与前端消息相同

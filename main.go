@@ -21,7 +21,7 @@ func main() {
 		log.Error("输入的参数有误！")
 	}
 	nodeID := os.Args[1]
-	merkle.StatePath = "./levelDB/db/path/statedb/"+nodeID // 账户数据暂时使用单独的数据库存储
+	merkle.StatePath = "./levelDB/db/path/statedb/" + nodeID // 账户数据暂时使用单独的数据库存储
 	//数据库连接
 	levelDB.InitDB(nodeID)
 
@@ -32,7 +32,7 @@ func main() {
 		pbft.ClientSendMessageAndListen() //启动客户端程序
 		//初始化
 		initBlockChain(nodeID)
-	} else if addr, ok := commonconst.NodeTable[nodeID]; ok {
+	} else if addr, ok := common.NodeTable[nodeID]; ok {
 		p := pbft.NewPBFT(nodeID, addr)
 		go p.TcpListen() //启动节点
 		//初始化
@@ -61,7 +61,7 @@ func initBlockChain(ID string) {
 		//非主节点初始化时需要和主节点进行区块信息同步
 		//先生成区块链同步请求消息，再发送
 		msg := network.GenBlockSynReqMsg(ID)
-		log.Info("发送区块链同步消息,msg:", msg, "addr:", commonconst.NodeTable["N0"])
-		network.TCPSend(msg, commonconst.NodeTable["N0"])
+		log.Info("发送区块链同步消息,msg:", msg, "addr:", common.NodeTable["N0"])
+		network.TCPSend(msg, common.NodeTable["N0"])
 	}
 }

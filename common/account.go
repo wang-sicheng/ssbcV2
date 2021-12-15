@@ -1,6 +1,6 @@
-package commonconst
+package common
 
-//接收部署智能合约的特殊地址
+// 接收部署智能合约的特殊地址
 const ContractDeployAddress = "00000000000000000000"
 
 // levelDB 所有账户的key （key: AccountsKey - val: state.Accounts）

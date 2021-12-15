@@ -178,7 +178,6 @@ func CallContract(name string, method string, args map[string]string) (retErr er
 	log.Infof("调用智能合约的URL：%v\n", url)
 	res, err := http.Get(url)
 
-
 	//封装调用参数
 	//req := meta.ContractRequest{
 	//	Method: method,

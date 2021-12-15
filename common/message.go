@@ -1,4 +1,4 @@
-package commonconst
+package common
 
 const (
 	//区块链同步（本链节点间）

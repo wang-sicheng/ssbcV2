@@ -10,7 +10,7 @@ import (
 //生成区块同步请求消息
 func GenBlockSynReqMsg(nodeId string) meta.TCPMessage {
 	msg := meta.TCPMessage{
-		Type:    commonconst.BlockSynReqMsg,
+		Type:    common.BlockSynReqMsg,
 		Content: nil,
 		From:    nodeId,
 	}
@@ -24,7 +24,7 @@ func GenBlockSynResMsg() meta.TCPMessage {
 	//log.Info("当前区块链:", bc)
 	bcByte, _ := json.Marshal(bc)
 	msg := meta.TCPMessage{
-		Type:    commonconst.BlockSynResMsg,
+		Type:    common.BlockSynResMsg,
 		Content: bcByte,
 	}
 	return msg
