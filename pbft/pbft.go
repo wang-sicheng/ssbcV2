@@ -553,19 +553,19 @@ func (p *pbft) handleCommit(content []byte) {
 func (p *pbft) refreshState(b *meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
-	// 状态树的版本是区块的高度，版本号从0开始
-	ver := b.Height - 1
 	// 需要更新到状态树的account
 	var accounts []meta.Account
 	// 执行每一笔交易
 	for _, tx := range txs {
 		p.execute(tx, &accounts)
 	}
-	stateRootHash, err := merkle.UpdateAccountState(accounts, uint64(ver))
-	if err != nil {
-		log.Error(err)
+	if len(accounts) != 0 { // 当账户信息出现变动时才更新
+		stateRootHash, err := merkle.UpdateAccountState(accounts, merkle.GetVersion())
+		if err != nil {
+			log.Error(err)
+		}
+		b.StateRoot = stateRootHash.Bytes()
 	}
-	b.StateRoot = stateRootHash.Bytes()
 }
 
 func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {

@@ -11,6 +11,8 @@ import (
 
 var StatePath string
 
+var version uint64 = 0 // 只有在账户信息变动时，版本号才加一
+
 // 更新账户state数据到新的版本，生成新的root hash
 func UpdateAccountState(accounts []meta.Account, version uint64) (common.HashValue, error) {
 	db := jellyfish.NewTreeStore(StatePath)
@@ -68,4 +70,10 @@ func ProofVerify(rootHash common.HashValue, proof jellyfish.SparseMerkleProof, a
 	}
 	res := proof.Verify(rootHash, k, jellyfish.ValueT{accountBytes})
 	return res, nil
+}
+
+func GetVersion() uint64 {
+	curr := version
+	version++
+	return curr
 }
