@@ -2,3 +2,5 @@ ssbcV2
 db/*
 ssbcV2.exe
 levelDB/db/path/*
+.idea/*
+ssbcV2.exe\~
