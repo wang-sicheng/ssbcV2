@@ -6,6 +6,7 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/util"
@@ -82,75 +83,32 @@ func clientHandleTcpMsg(content []byte, conn net.Conn) {
 func refreshState(b meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
-	// client 处理每一笔交易
+	// 状态树的版本是区块的高度，版本号从0开始
+	ver := b.Height-1
+	// 需要更新到状态树的account
+	var accounts []meta.Account
+	// 执行每一笔交易
 	for _, tx := range txs {
-		if tx.Contract != "" {
-			if tx.To == commonconst.ContractDeployAddress {
-				account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract)
-			} else {
-				// 合约执行后，如何同步给client
-			}
-		} else {
-			// 转账交易
-			if tx.From == commonconst.FaucetAccountAddress {
-				account.CreateAccount(tx.To, tx.PublicKey, 0)
-			}
-			account.SubBalance(tx.From, tx.Value)
-			account.AddBalance(tx.To, tx.Value)
-		}
+		clientExecute(tx, &accounts)
 	}
-}
-
-//节点使用的tcp监听
-func (p *pbft) TcpListen() {
-	listen, err := net.Listen("tcp", p.node.addr)
+	stateRootHash, err := merkle.UpdateAccountState(accounts, uint64(ver))
 	if err != nil {
 		log.Error(err)
 	}
-	log.Info("节点开启监听，地址：", p.node.addr)
-	defer listen.Close()
-	for {
-		conn, err := listen.Accept()
-		log.Info("新连接：", conn.LocalAddr().String(), " -- ", conn.RemoteAddr().String())
-		if err != nil {
-			log.Error(err)
-		}
-		p.handleNewConn(conn)
+	b.StateRoot = stateRootHash.Bytes()
+}
+
+func clientExecute(tx meta.Transaction, accounts *[]meta.Account) {
+	switch tx.Type {
+	case meta.Register:
+		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, commonconst.InitBalance))
+	case meta.Transfer:
+		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
+	case meta.Publish:
+		*accounts  = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
+	case meta.Invoke:
+	default:
+		log.Infof("未知的交易类型")
 	}
 }
 
-func (p *pbft) handleNewConn(conn net.Conn) {
-	//for {
-	//
-	//	buf := make([]byte, 4096)
-	//	n, err := conn.Read(buf) //从conn读取
-	//	if err == nil {
-	//		log.Info("接收到消息：", string(buf[:n]))
-	//		p.handleRequest(buf[:n], conn)
-	//	} else if err != io.EOF {
-	//		log.Error("[handleNewConn] err:", err)
-	//	}
-	//}
-
-	//Version2
-	b, err := ioutil.ReadAll(conn)
-	if err != nil {
-		log.Error("[handleNewConn] err:", err)
-	}
-	p.handleRequest(b, conn)
-}
-
-//使用tcp发送消息
-func tcpDial(context []byte, addr string) {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		log.Error("connect error", err)
-		return
-	}
-
-	_, err = conn.Write(context)
-	if err != nil {
-		log.Fatal(err)
-	}
-	conn.Close()
-}

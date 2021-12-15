@@ -28,11 +28,6 @@ func main() {
 	// 从levelDB读取账户信息（必须在数据库建立连接后，所以不能在init()完成）
 	account.GetFromDisk()
 
-	// 创建 Faucet 账户，其他账户的初始余额来自它
-	if !account.ContainsAddress(commonconst.FaucetAccountAddress) {
-		account.CreateAccount(commonconst.FaucetAccountAddress, "", 1 << 48)
-	}
-
 	if nodeID == "client" {
 		pbft.ClientSendMessageAndListen() //启动客户端程序
 		//初始化

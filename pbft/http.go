@@ -163,6 +163,7 @@ func sendNewContract(c meta.ContractPost) {
 		Hash:      nil,
 		PublicKey: c.PublicKey,
 		Sign:      nil,
+		Type:      meta.Publish,
 	}
 	//客户端在转发交易之前需要对交易进行签名
 	//先将交易进行hash
@@ -254,21 +255,22 @@ func registerAccount(ctx *gin.Context) {
 	// client 存储账户的私钥
 	levelDB.DBPut(account + commonconst.AccountsPrivateKeySuffix, priKey)
 
-	// FaucetAccount -> 新账户 转账，方便测试
+	// 将交易类型设置为Register
 	t := meta.Transaction{
-		From:      commonconst.FaucetAccountAddress,
+		From:      account,
 		To:        account,
 		Dest:      "",
 		Contract:  "",
 		Method:    "",
 		Args:      nil,
 		Data:      meta.TransactionData{},
-		Value:     100000,
+		Value:     commonconst.InitBalance,
 		Id:        nil,
 		Timestamp: "",
 		Hash:      nil,
 		PublicKey: string(pubKey),
 		Sign:      nil,
+		Type: 	   meta.Register,
 	}
 	//客户端在转发交易之前需要对交易进行签名
 	//先将交易进行hash
@@ -386,6 +388,7 @@ func postTran(ctx *gin.Context) {
 		Hash:      nil,
 		PublicKey: pt.PublicKey,
 		Sign:      nil,
+		Type:      pt.Type,
 	}
 	//客户端在转发交易之前需要对交易进行签名
 	//先将交易进行hash

@@ -71,6 +71,45 @@ func NewPBFT(nodeID, addr string) *pbft {
 	return p
 }
 
+//节点使用的tcp监听
+func (p *pbft) TcpListen() {
+	listen, err := net.Listen("tcp", p.node.addr)
+	if err != nil {
+		log.Error(err)
+	}
+	log.Info("节点开启监听，地址：", p.node.addr)
+	defer listen.Close()
+	for {
+		conn, err := listen.Accept()
+		log.Info("新连接：", conn.LocalAddr().String(), " -- ", conn.RemoteAddr().String())
+		if err != nil {
+			log.Error(err)
+		}
+		p.handleNewConn(conn)
+	}
+}
+
+func (p *pbft) handleNewConn(conn net.Conn) {
+	//for {
+	//
+	//	buf := make([]byte, 4096)
+	//	n, err := conn.Read(buf) //从conn读取
+	//	if err == nil {
+	//		log.Info("接收到消息：", string(buf[:n]))
+	//		p.handleRequest(buf[:n], conn)
+	//	} else if err != io.EOF {
+	//		log.Error("[handleNewConn] err:", err)
+	//	}
+	//}
+
+	//Version2
+	b, err := ioutil.ReadAll(conn)
+	if err != nil {
+		log.Error("[handleNewConn] err:", err)
+	}
+	p.handleRequest(b, conn)
+}
+
 //处理tcp请求
 func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 	//先解析消息
@@ -137,19 +176,9 @@ func (p *pbft) handleClientRequest(content []byte) {
 	//解析交易、执行交易步骤根据交易的input生成output
 
 	// 检查交易能否执行，没问题就打包成块
-	if trans.Contract != "" {
-		if trans.To == commonconst.ContractDeployAddress {
-			// 判断合约能否部署（并没有真正部署）
-		} else {
-			// 判断合约嫩否调用（并没有真正调用）
-		}
-	} else {
-		// 判断能否转账
-		if ok := account.CanTransfer(trans.From, trans.Value); !ok {
-			log.Info("余额不足，无法转账")
-			// 如何将消息传至前端
-			return
-		}
+	if ok := checkTran(trans); !ok {
+		// 将消息反馈至前端
+		return
 	}
 
 	//trans = p.parseAndDealTransaction(trans)
@@ -540,33 +569,54 @@ func (p *pbft) refreshState(b *meta.Block) {
 }
 
 func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
-	if tx.Contract != "" {
-		if tx.To == commonconst.ContractDeployAddress {
-			*accounts  = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
-			// 目前是单机版本，合约只由N0节点部署
-			if p.node.nodeID == "N0" {
-				//部署合约
-				contractName:=tx.Contract
-				//生成build地址
-				path:="/smart_contract/"+contractName+"/"
-				smart_contract.BuildAndRun(path,contractName)
-			}
-		} else {
-			// 目前是单机版本，合约只由N0节点调用
-			if p.node.nodeID == "N0" {
-				// 调用合约
-				tx.Args["sender"] = tx.From
-				log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
-				go smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
-			}
-		}
-	} else {
-		// 转账交易
-		if tx.From == commonconst.FaucetAccountAddress {
-			*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, 0))
-		}
+	switch tx.Type {
+	case meta.Register:
+		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, commonconst.InitBalance))
+	case meta.Transfer:
 		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
+	case meta.Publish:
+		*accounts  = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
+		// 目前是单机版本，合约只由N0节点部署
+		if p.node.nodeID == "N0" {
+			//部署合约
+			contractName:=tx.Contract
+			//生成build地址
+			path:="/smart_contract/"+contractName+"/"
+			smart_contract.BuildAndRun(path,contractName)
+		}
+	case meta.Invoke:
+		// 目前是单机版本，合约只由N0节点调用
+		if p.node.nodeID == "N0" {
+			// 调用合约
+			tx.Args["sender"] = tx.From
+			log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
+			go smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
+		}
+	default:
+		log.Infof("未知的交易类型")
 	}
+}
+
+// 交易打包前检测
+func checkTran(tx meta.Transaction) bool {
+	switch tx.Type {
+	case meta.Transfer:
+		// 判断能否转账
+		if ok := account.CanTransfer(tx.From, tx.Value); !ok {
+			log.Info("余额不足，无法转账")
+			return false
+		}
+	case meta.Register:
+		// 检查能否创建账户
+	case meta.Publish:
+		// 判断合约能否部署（并没有真正部署）
+	case meta.Invoke:
+		// 判断合约能否调用（并没有真正调用）
+	default:
+		log.Infof("未知的交易类型")
+		return false
+	}
+	return true
 }
 
 //序号累加
