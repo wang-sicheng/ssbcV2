@@ -1,7 +1,6 @@
 package pbft
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
@@ -12,11 +11,10 @@ import (
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
+	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
-	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"time"
 )
@@ -85,18 +83,18 @@ func postContract(ctx *gin.Context) {
 	_ = ctx.ShouldBind(&postC)
 	//得先获取到合约名
 	contractName := postC.Name
-	//先在docker文件目录中创建合约文件夹
-	if isExist("./smart_contract/" + contractName) {
+	//先创建合约文件夹
+	if isExist("./smart_contract/contract/" + contractName) {
 		log.Error("该合约已存在")
 		hr := warpBadHttpResponse("同名合约已存在")
 		ctx.JSON(http.StatusBadRequest, hr)
 	} else {
-		err := os.Mkdir("./smart_contract/"+contractName, 0777)
+		err := os.Mkdir("./smart_contract/contract/"+contractName, 0777)
 		if err != nil {
 			log.Error(err)
 		}
 		// 创建保存文件
-		destFile, err := os.Create("./smart_contract/" + contractName + "/" + contractName + ".go")
+		destFile, err := os.Create("./smart_contract/contract/" + contractName + "/" + contractName + ".go")
 		if err != nil {
 			log.Error("Create failed: %s\n", err)
 			return
@@ -104,13 +102,10 @@ func postContract(ctx *gin.Context) {
 		defer destFile.Close()
 		_, _ = destFile.WriteString(postC.Code)
 
-		//创建Dockfile文件
-		GenerateDockerFile(contractName)
-		//解决代码依赖问题
-		err, errStr := GoModManage(contractName)
+		err, errStr := smart_contract.GoBuildPlugin(contractName)
 		if err != nil {
 			//将文件夹删除
-			err := os.RemoveAll("./smart_contract/" + contractName)
+			err := os.RemoveAll("./smart_contract/contract/" + contractName)
 			if err != nil {
 				log.Error(err)
 			}
@@ -123,25 +118,6 @@ func postContract(ctx *gin.Context) {
 			hr := warpGoodHttpResponse("SuccessFully")
 			ctx.JSON(http.StatusOK, hr)
 		}
-	}
-}
-
-//解决Dockerfile
-func GenerateDockerFile(path string) {
-	df, err := os.Create("./smart_contract/" + path + "/" + "Dockerfile")
-	if err != nil {
-		log.Error(err)
-	}
-	defer df.Close()
-	source, err := os.Open("./smart_contract/Dockerfile")
-	if err != nil {
-		log.Error(err)
-	}
-	defer source.Close()
-
-	_, err = io.Copy(df, source)
-	if err != nil {
-		log.Error(err)
 	}
 }
 
@@ -189,47 +165,6 @@ func sendNewContract(c meta.ContractPost) {
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
 	network.TCPSend(msg, common.NodeTable["N0"])
-}
-
-func GoModManage(contractName string) (err error, errStr string) {
-	var output1, output2, output3 bytes.Buffer
-	//执行依赖管理指令
-	cmd := exec.Command("go", "mod", "init")
-	cmd.Dir = "./smart_contract/" + contractName
-	cmd.Stderr = &output1
-	err = cmd.Run()
-	if err != nil {
-		log.Error(err)
-		return err, output1.String()
-	} else {
-		log.Info(output1.String())
-	}
-
-	cmd = exec.Command("go", "mod", "tidy")
-	cmd.Dir = "./smart_contract/" + contractName
-	cmd.Stdout = &output2
-	err = cmd.Run()
-	if err != nil {
-		log.Error(err)
-		return err, output2.String()
-	} else {
-		log.Info(output2.String())
-	}
-
-	//执行编译命令
-	cmd = exec.Command("go", "build")
-	cmd.Dir = "./smart_contract/" + contractName
-	cmd.Stderr = &output3
-	err = cmd.Run()
-	if err != nil {
-		log.Info(output3.String())
-		log.Error(err)
-		return err, output3.String()
-	} else {
-		log.Info(output3.String())
-	}
-
-	return nil, ""
 }
 
 //账户注册

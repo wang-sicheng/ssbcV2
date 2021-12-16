@@ -1,457 +1,74 @@
 package smart_contract
 
 import (
-	"bufio"
-	"context"
-	"encoding/json"
+	"bytes"
 	"errors"
-	"fmt"
 	"github.com/cloudflare/cfssl/log"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/go-connections/nat"
-	"github.com/ssbcV2/meta"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strconv"
+	"os/exec"
+	"plugin"
 )
 
-var DockerClient *client.Client
-var ctx context.Context
+/* 智能合约模板（golang plugin）
+`
+package main	// 包名必须为main
 
-func init() {
-	ctx = context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+import (
+	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/smart_contract"		// 调用其他智能合约时引入
+)
+
+// 参数必须为 map[string]string, 返回结果必须为 (interface{}, error)
+func Multiply(args map[string]string) (interface{}, error) {
+	// 调用其他合约，自行封装参数
+	num, err := smart_contract.CallContract("random", "GetRandom", map[string]string{})
 	if err != nil {
-		panic(err)
+		log.Infof("[Multiply] 调用random失败")
 	}
-	DockerClient = cli
+	a := num.(int)
+	log.Infof("[Multiply] 调用 random.GetRandom 成功，结果：%v\n", a)
+	ans := a * a
+	log.Infof("[Multiply] 结果：%v\n", ans)
+	return ans, nil
+}
+`
+*/
+
+// 将智能合约编译成动态库
+func GoBuildPlugin(contractName string) (err error, errStr string) {
+	var output bytes.Buffer
+
+	// 执行编译命令
+	cmd := exec.Command("go", "build", "-buildmode=plugin", contractName + ".go")
+	cmd.Dir = "./smart_contract/contract/" + contractName
+	cmd.Stderr = &output
+	err = cmd.Run()
+	if err != nil {
+		log.Info(output.String())
+		log.Error(err)
+		return err, output.String()
+	} else {
+		log.Info(output.String())
+	}
+	return nil, ""
 }
 
-//基于源代码编译为docker镜像
-func BuildAndRun(path string, name string) {
-	//超时退出设置
-	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
-	//defer cancel()
-
-	//获取当前程序执行的路径
-	file, _ := os.Getwd()
-	log.Info("当前程序执行路径:", file)
-	if runtime.GOOS == "windows" {
-		path = filepath.FromSlash(path)
-	}
-	path = file + path
-	//先压缩源代码文件
-	tar, err := archive.TarWithOptions(path, &archive.TarOptions{})
-	log.Info("合约编译镜像地址为：", path)
-
-	if err != nil {
-		log.Info("tar err:", err)
-	}
-
-	//build参数
-	opts := types.ImageBuildOptions{
-		Dockerfile: "Dockerfile",
-		Tags:       []string{name},
-		Labels: map[string]string{
-			"name": name,
-		},
-		Remove: true,
-	}
-
-	res, err := DockerClient.ImageBuild(ctx, tar, opts)
-	if err != nil {
-		log.Info("ImageBuild err:", err)
-	}
-	defer res.Body.Close()
-
-	err = printError(res.Body)
-	if err != nil {
-		log.Info("err:", err)
-	}
-
-	//把build成功的镜像run为容器
-	exports := make(nat.PortSet, 10)
-	port, err := nat.NewPort("tcp", "8080")
-	if err != nil {
-		log.Error(err)
-	}
-	exports[port] = struct{}{}
-	config := &container.Config{Image: name, ExposedPorts: exports}
-
-	//这里嵌入一个逻辑--寻找当前空闲的端口号
-	//获取到可用的tcp连接端口
-	availPInt, _ := getFreePort()
-	log.Info("可用端口号为：", availPInt)
-	availPStr := strconv.Itoa(availPInt)
-	portBind := nat.PortBinding{HostPort: availPStr}
-	portMap := make(nat.PortMap, 0)
-	tmp := make([]nat.PortBinding, 0, 1)
-	tmp = append(tmp, portBind)
-	portMap[port] = tmp
-	hostConfig := &container.HostConfig{PortBindings: portMap}
-	// networkingConfig := &network.NetworkingConfig{}
-	containerName := "contract" + name
-	body, err := DockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
-	if err != nil {
-		log.Error(err)
-	}
-	log.Info("容器build成功，ID: ", body.ID)
-	if err := DockerClient.ContainerStart(ctx, body.ID, types.ContainerStartOptions{}); err != nil {
-		log.Error(err)
-		panic(err)
-	}
-
-}
-
-func ContractDataServer(key string) (data []byte) {
-	//智能合约数据服务
-	params := url.Values{}
-	Url, err := url.Parse("http://docker.for.mac.host.internal:9999/query")
-	if err != nil {
-		log.Info("url parse err:", err)
-	}
-
-	params.Set("queryKey", key)
-	//如果参数中有中文参数,这个方法会进行URLEncode
-	Url.RawQuery = params.Encode()
-	urlPath := Url.String()
-
-	resp, err := http.Get(urlPath)
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Info(err)
-	}
-
-	return body
-}
-
-//调用智能合约
-func CallContract(name string, method string, args map[string]string) (retErr error, resp meta.ContractResponse) {
-	//step0：先进行参数校验
+// 调用智能合约
+func CallContract(name string, method string, args map[string]string) (interface{}, error) {
+	// 参数校验
 	if name == "" || method == "" {
-		retErr = errors.New("invalid call params")
-		log.Error(retErr)
-		return
-	}
-	//step1：判断是否存在所调用的智能合约
-	//先取出当前运行的容器列表
-	var find bool
-	cs := ListAllContains()
-	cont := types.Container{}
-	for _, c := range cs {
-		log.Info(c.ID, c.Image)
-		if c.Image == name {
-			cont = c
-			find = true
-		}
-	}
-	if find == false {
-		retErr = errors.New("contract not exists")
-		log.Error(retErr)
-		return
+		return nil, errors.New("invalid call params")
 	}
 
-	//解析出所调用的合约地址
-	var port uint16
-	for _, p := range cont.Ports {
-		port = p.PublicPort
-		break
-	}
-	portStr := strconv.Itoa(int(port))
-
-	url := "http://127.0.0.1:" + portStr + "/" + method + "?"
-	for k, v := range args {
-		url += k + "=" + v + "&"
-	}
-	log.Infof("调用智能合约的URL：%v\n", url)
-	res, err := http.Get(url)
-
-	//封装调用参数
-	//req := meta.ContractRequest{
-	//	Method: method,
-	//	Args:   args,
-	//}
-	//reqByte, _ := json.Marshal(req)
-	//body := bytes.NewBuffer(reqByte)
-	//res, err := http.Post("http://127.0.0.1:"+portStr, "application/json;charset=utf-8", body)
+	p, err := plugin.Open("./smart_contract/contract/" + name + "/" + name + ".so")
 	if err != nil {
-		log.Error("[CallContract] call err:", err)
-		retErr = err
-		return
+		return nil, err
 	}
-
-	//读取合约调用结果
-	result, err := ioutil.ReadAll(res.Body)
-	defer res.Body.Close()
+	f, err := p.Lookup(method)
 	if err != nil {
-		log.Error("[CallContract] read result err:", err)
-		retErr = err
-		return
-	}
-	//反序列化为最终response
-	response := meta.ContractResponse{}
-	retErr = json.Unmarshal(result, &response)
-	if retErr != nil {
-		log.Error("[CallContract] json unmarshal failed,err:", err)
-		return
-	}
-	return nil, response
-
-}
-
-func printError(rd io.Reader) error {
-	type ErrorDetail struct {
-		Message string `json:"message"`
+		return nil, err
 	}
 
-	type ErrorLine struct {
-		Error       string      `json:"error"`
-		ErrorDetail ErrorDetail `json:"errorDetail"`
-	}
-
-	var lastLine string
-
-	scanner := bufio.NewScanner(rd)
-	for scanner.Scan() {
-		lastLine = scanner.Text()
-		log.Info(scanner.Text())
-	}
-
-	errLine := &ErrorLine{}
-	json.Unmarshal([]byte(lastLine), errLine)
-	if errLine.Error != "" {
-		return errors.New(errLine.Error)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//Run a container--运行一个容器
-func RunAContainer() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	reader, err := cli.ImagePull(ctx, "docker.io/library/alpine", types.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-	io.Copy(os.Stdout, reader)
-
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "alpine",
-		Cmd:   []string{"echo", "hello world"},
-		Tty:   false,
-	}, nil, nil, nil, "")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
-	}
-
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			panic(err)
-		}
-	case <-statusCh:
-	}
-
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		panic(err)
-	}
-
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-}
-
-//Run a container in the background
-func main2() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	imageName := "bfirsh/reticulate-splines"
-
-	out, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-	io.Copy(os.Stdout, out)
-
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: imageName,
-	}, nil, nil, nil, "")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
-	}
-
-	log.Info(resp.ID)
-}
-
-//List and manage containers
-func ListAllContains() []types.Container {
-	containers, err := DockerClient.ContainerList(ctx, types.ContainerListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	return containers
-	//for _, container := range containers {
-	//	log.Info(container.ID, container.Image)
-	//}
-}
-
-//Stop all running containers
-func main4() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	for _, container := range containers {
-		fmt.Print("Stopping container ", container.ID[:10], "... ")
-		if err := cli.ContainerStop(ctx, container.ID, nil); err != nil {
-			panic(err)
-		}
-		log.Info("Success")
-	}
-}
-
-//Print the logs of a specific container
-func main5() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	options := types.ContainerLogsOptions{ShowStdout: true}
-	// Replace this ID with a container that really exists
-	out, err := cli.ContainerLogs(ctx, "f1064a8a4c82", options)
-	if err != nil {
-		panic(err)
-	}
-
-	io.Copy(os.Stdout, out)
-}
-
-//List all images
-func main6() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	images, err := cli.ImageList(ctx, types.ImageListOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	for _, image := range images {
-		log.Info(image.ID)
-	}
-}
-
-//Pull an image
-func main7() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	out, err := cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	defer out.Close()
-
-	io.Copy(os.Stdout, out)
-}
-
-//Commit a container--更新容器commit为镜像
-func main8() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	createResp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "alpine",
-		Cmd:   []string{"touch", "/helloworld"},
-	}, nil, nil, nil, "")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := cli.ContainerStart(ctx, createResp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
-	}
-
-	statusCh, errCh := cli.ContainerWait(ctx, createResp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			panic(err)
-		}
-	case <-statusCh:
-	}
-
-	commitResp, err := cli.ContainerCommit(ctx, createResp.ID, types.ContainerCommitOptions{Reference: "helloworld"})
-	if err != nil {
-		panic(err)
-	}
-
-	log.Info(commitResp.ID)
-}
-
-//在本机找空闲端口号
-func getFreePort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
+	a, _ := f.(func(map[string]string) (interface{}, error))(args)
+	log.Infof("执行结果：%v\n", a)
+	return a, nil
 }

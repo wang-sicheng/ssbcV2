@@ -581,8 +581,9 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 			//部署合约
 			contractName := tx.Contract
 			//生成build地址
-			path := "/smart_contract/" + contractName + "/"
-			smart_contract.BuildAndRun(path, contractName)
+			path := "/smart_contract/contract/" + contractName + "/"
+			log.Info(path)
+			//smart_contract.BuildAndRun(path, contractName)
 		}
 	case meta.Invoke:
 		// 目前是单机版本，合约只由N0节点调用
@@ -590,7 +591,12 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 			// 调用合约
 			tx.Args["sender"] = tx.From
 			log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
-			go smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
+			result, err := smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
+			if err != nil {
+				log.Errorf("调用失败：", err)
+			}
+			log.Infof("调用结果：%v\n", result)
+
 		}
 	default:
 		log.Infof("未知的交易类型")

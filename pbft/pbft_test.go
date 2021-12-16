@@ -17,8 +17,3 @@ func TestGenerateKey(t *testing.T) {
 	account := hex.EncodeToString(pubHash[:20])
 	log.Info(account)
 }
-
-func TestGoModManage(t *testing.T) {
-	_, errStr := GoModManage("hellotest")
-	log.Info("错误：", errStr)
-}
