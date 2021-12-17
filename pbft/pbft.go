@@ -7,6 +7,7 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/event"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
@@ -152,12 +153,41 @@ func (p *pbft) handleClientRequest(content []byte) {
 		log.Error(err)
 	}
 
-	//Step2：主节点需要先将交易存储至临时的交易池，待交易池满，打包为区块进行PBFT共识
-	transMsg := r.Content
-	trans := meta.Transaction{}
-	log.Infof("交易信息：%v\n", transMsg)
-	err = json.Unmarshal([]byte(transMsg), &trans)
-	util.DealJsonErr("handleClientRequest", err)
+	var transList []meta.Transaction
+	// 收到事件消息，转化成交易放入交易池
+	if r.Type == 1 {
+		var message meta.EventMessage
+		err := json.Unmarshal([]byte(r.Content), &message)
+		if err != nil {
+			log.Errorf("event message decode error: %s", err)
+		} else {
+			eventTrans, err := event.EventToTransaction(message)
+			if err != nil {
+				log.Errorf("event to trans error: %s", err)
+			}
+			transList = append(transList, eventTrans...)
+		}
+	} else {
+		//Step2：主节点需要先将交易存储至临时的交易池，待交易池满，打包为区块进行PBFT共识
+		transMsg := r.Content
+		trans := meta.Transaction{}
+		log.Infof("交易信息：%v\n", transMsg)
+		err = json.Unmarshal([]byte(transMsg), &trans)
+		util.DealJsonErr("handleClientRequest", err)
+
+		// 检查交易能否执行，没问题就打包成块
+		if ok := checkTran(trans); !ok {
+			// 将消息反馈至前端
+			return
+		}
+		//trans = p.parseAndDealTransaction(trans)
+		trans.Timestamp = time.Now().String()
+		trans.Id, _ = util.CalculateHash([]byte(trans.Timestamp))
+		transList = append(transList, trans)
+	}
+
+
+
 	//step3：主节点对交易进行验签，验签不通过的丢弃
 	//if !RsaVerySignWithSha256(trans.Hash,trans.Sign,[]byte(trans.PublicKey)){
 	//	log.Error("[handleClientRequest] 验签失败!!")
@@ -175,18 +205,9 @@ func (p *pbft) handleClientRequest(content []byte) {
 
 	//解析交易、执行交易步骤根据交易的input生成output
 
-	// 检查交易能否执行，没问题就打包成块
-	if ok := checkTran(trans); !ok {
-		// 将消息反馈至前端
-		return
-	}
-
-	//trans = p.parseAndDealTransaction(trans)
-	trans.Timestamp = time.Now().String()
-	trans.Id, _ = util.CalculateHash([]byte(trans.Timestamp))
 	bc := chain.GetCurrentBlockChain()
 	index := len(bc)
-	p.transPool[index] = append(p.transPool[index], trans)
+	p.transPool[index] = append(p.transPool[index], transList...)
 	//满足交易数则打包新区块
 	if len(p.transPool[index]) == common.TxsThreshold {
 		//主节点接收到的交易已经到达阈值，打包新区块进行PBFT共识
@@ -222,7 +243,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 		p.broadcast(msg)
 		log.Info("PrePrepare广播完成")
 	} else {
-		log.Info("主节点已将交易存储至交易池，交易详情：", transMsg)
+		log.Infof("主节点已将交易存储至交易池，交易详情：%+v", transList)
 	}
 }
 

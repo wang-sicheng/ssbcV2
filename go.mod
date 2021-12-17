@@ -18,7 +18,8 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/moby/sys/mount v0.3.0 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
-	github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211214081745-22621b3119b5 // indirect
+	github.com/prometheus/common v0.10.0
+	github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211214081745-22621b3119b5
 	github.com/syndtr/goleveldb v1.0.0
 	gotest.tools v2.2.0+incompatible
 )

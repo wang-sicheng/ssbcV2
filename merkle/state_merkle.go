@@ -13,6 +13,30 @@ var StatePath string
 
 var version uint64 = 0 // 只有在账户信息变动时，版本号才加一
 
+func UpdateEventState(data []meta.JFTreeData, version uint64) (common.HashValue, error) {
+	db := jellyfish.NewTreeStore(StatePath)
+	defer db.Db.Close()
+	tree := jellyfish.JfMerkleTree{
+		db,
+		nil,
+	}
+	var kvs []jellyfish.ValueSetItem
+	for _, item := range data {
+		valueBytes, _ := json.Marshal(item)
+		kvs = append(kvs, jellyfish.ValueSetItem{
+			item.GetKey(),
+			jellyfish.ValueT{valueBytes},
+		})
+	}
+	rootHash, batch := tree.PutValueSet(kvs, jellyfish.Version(version))
+	err := db.WriteTreeUpdateBatch(batch)
+	if err != nil {
+		log.Errorf("event state update error: %s", err)
+		return rootHash, err
+	}
+	return rootHash, nil
+}
+
 // 更新账户state数据到新的版本，生成新的root hash
 func UpdateAccountState(accounts []meta.Account, version uint64) (common.HashValue, error) {
 	db := jellyfish.NewTreeStore(StatePath)

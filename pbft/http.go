@@ -44,7 +44,8 @@ func clientHttpListenV2() {
 	//提供链上query服务--既能服务于普通节点也能服务于智能合约
 	r.GET("/query", query)
 	//r.POST("/decrypt",decrypt)
-
+	// 发起事件
+	r.POST("/postEvent", postEvent)
 	r.Run(common.ClientToUserAddr)
 }
 
@@ -151,7 +152,7 @@ func sendNewContract(c meta.ContractPost) {
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = getRandom()
-
+	r.Type = 0
 	tb, _ := json.Marshal(t)
 	r.Message.Content = string(tb)
 	br, err := json.Marshal(r)
@@ -217,6 +218,7 @@ func registerAccount(ctx *gin.Context) {
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = getRandom()
+	r.Type = 0
 
 	tb, _ := json.Marshal(t)
 	r.Message.Content = string(tb)
@@ -281,6 +283,50 @@ func getAllAccounts(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, hr)
 }
 
+func postEvent(ctx *gin.Context) {
+	b, _ := ctx.GetRawData()
+	params := meta.EventMessageParams{}
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		log.Errorf("[postEvent], json decode err: %s", err)
+		return
+	}
+	var args map[string]string
+	err = json.Unmarshal([]byte(params.Args), &args)
+	if err != nil {
+		log.Errorf("[event args], json decode err: %s", err)
+		return
+	}
+	em := meta.EventMessage{
+		From:      params.From,
+		EventID:   params.EventKey,
+		Data:      args,
+		Sign:      nil, // TODO:增加签名
+		PublicKey: params.PublicKey,
+		TimeStamp: "",
+		Hash: nil,
+	}
+	req := Request{
+		Message:    Message{},
+		Timestamp:  time.Now().UnixNano(),
+		ClientAddr: common.ClientToNodeAddr,
+	}
+	emBytes, _ := json.Marshal(em)
+	req.Message.Content = string(emBytes)
+	req.Message.ID = getRandom()
+	req.Type = 1
+	reqBytes, _ := json.Marshal(req)
+	msg := meta.TCPMessage{
+		Type:    common.PBFTRequest,
+		Content: reqBytes,
+		From:    "",
+		To:      "",
+	}
+	network.TCPSend(msg, common.NodeTable["N0"])
+	hr := warpGoodHttpResponse(common.PostTranSuccess)
+	ctx.JSON(http.StatusOK, hr)
+}
+
 //提交一笔交易
 func postTran(ctx *gin.Context) {
 	b, _ := ctx.GetRawData()
@@ -335,6 +381,7 @@ func postTran(ctx *gin.Context) {
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = getRandom()
+	r.Type = 0
 
 	tb, _ := json.Marshal(t)
 	r.Message.Content = string(tb)
@@ -479,3 +526,5 @@ func checkTranParameters(pt *meta.PostTran) (string, bool) {
 	}
 	return "", true
 }
+
+

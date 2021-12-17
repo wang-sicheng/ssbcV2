@@ -1,9 +1,19 @@
 package meta
 
+import (
+	"encoding/hex"
+	"github.com/rjkris/go-jellyfish-merkletree/common"
+)
+
+type JFTreeData interface {
+	GetKey() common.HashValue
+}
+
 type Event struct {
 	EventID     string
 	Args        map[string]string
 	FromAddress string // 事件定义方
+	Subscriptions []string // 订阅方
 }
 
 type EventSub struct {
@@ -18,13 +28,38 @@ type EventSub struct {
 }
 
 type EventMessage struct {
+	From string
 	EventID   string
-	Data      []byte
+	Data      map[string]string
 	Sign      []byte
 	PublicKey string
 	TimeStamp string
+	Hash []byte
 }
 
 type Callback struct {
-	Contract ContractPost
+	Contract string
+	Method string
+	Args map[string]string
+	Address string // 合约地址
 }
+
+type EventMessageParams struct {
+	From string `json:"from"`
+	EventKey string `json:"event_key"`
+	PublicKey string `json:"public_key"`
+	Args string `json:"args"`
+}
+
+
+func (e Event)GetKey() common.HashValue {
+	keyBytes, _ := hex.DecodeString(e.EventID)
+	return common.BytesToHash(keyBytes)
+}
+
+func (es EventSub)GetKey() common.HashValue {
+	keyBytes, _ := hex.DecodeString(es.SubID)
+	return common.BytesToHash(keyBytes)
+}
+
+
