@@ -16,3 +16,10 @@ type ContractPost struct {
 	Code       string `json:"code"`
 	Name       string `json:"name"`
 }
+
+type ContractUpdateData struct {
+	Events []Event
+	EventSubs []EventSub
+	Messages []EventMessage
+	StateData interface{}
+}

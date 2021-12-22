@@ -607,17 +607,31 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 			//smart_contract.BuildAndRun(path, contractName)
 		}
 	case meta.Invoke:
+		// 智能合约执行队列
+		var taskList []event.ContractTask
 		// 目前是单机版本，合约只由N0节点调用
 		if p.node.nodeID == "N0" {
 			// 调用合约
+			//tx.Args["sender"] = tx.From
+			//log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
+			//result, err := smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
+			//if err != nil {
+			//	log.Errorf("调用失败：", err)
+			//}
+			//log.Infof("调用结果：%v\n", result)
 			tx.Args["sender"] = tx.From
-			log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
-			result, err := smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
-			if err != nil {
-				log.Errorf("调用失败：", err)
+			taskList = append(taskList, event.ContractTask{
+				tx.Contract,
+				tx.Method,
+				tx.Args,
+			})
+			for len(taskList) !=0 {
+				err := smart_contract.HandleContractTask(&taskList)
+				if err != nil {
+					log.Errorf("contract task handle error: %s", err)
+					continue
+				}
 			}
-			log.Infof("调用结果：%v\n", result)
-
 		}
 	default:
 		log.Infof("未知的交易类型")

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/event"
+	"github.com/ssbcV2/meta"
 	"os/exec"
 	"plugin"
 )
@@ -71,4 +73,54 @@ func CallContract(name string, method string, args map[string]string) (interface
 	a, _ := f.(func(map[string]string) (interface{}, error))(args)
 	log.Infof("执行结果：%v\n", a)
 	return a, nil
+}
+
+// 执行智能合约，并将事件触发的智能合约放入队列
+func HandleContractTask(taskList *[]event.ContractTask) error {
+	task := (*taskList)[0]
+	*taskList = (*taskList)[1:]
+	p, err := plugin.Open("./smart_contract/contract/" + task.Name + "/" + task.Name + ".so")
+	if err != nil {
+		return err
+	}
+	f, err := p.Lookup(task.Method)
+	if err != nil {
+		return err
+	}
+	res, _ := f.(func(map[string]string) (interface{}, error))(task.Args)
+	log.Infof("执行结果:%+v", res)
+	data, ok := res.(meta.ContractUpdateData)
+	if !ok {
+		log.Error("contract update data decode error")
+	}
+	for _, msg := range data.Messages {
+		e, ok := event.EventData[msg.EventID]
+		if !ok {
+			log.Errorf("event is not exist: %+v", msg)
+			continue
+		}
+		eData, ok := e.(meta.Event)
+		if !ok {
+			log.Error("event data decode error")
+			continue
+		}
+		subs := eData.Subscriptions
+		for _, sub := range subs {
+			s, ok := event.EventData[sub]
+			if !ok {
+				log.Errorf("sub is not exist: %+v", s)
+			}
+			sData, ok := s.(meta.EventSub)
+			if !ok {
+				log.Errorf("sub data decode error")
+				continue
+			}
+			*taskList = append(*taskList, event.ContractTask{
+				Name:   sData.Callback.Contract,
+				Method: sData.Callback.Method,
+				Args:   sData.Callback.Args,
+			})
+		}
+	}
+	return nil
 }

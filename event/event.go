@@ -9,26 +9,32 @@ import (
 	"github.com/ssbcV2/meta"
 )
 
-type EventData map[string]meta.JFTreeData
-var eventData EventData
+var EventData map[string]meta.JFTreeData
+
+type ContractTask struct {
+	Name string
+	Method string
+	Args map[string]string
+}
+
 
 func init() {
-	eventData = map[string]meta.JFTreeData{}
+	EventData = map[string]meta.JFTreeData{}
 }
 
 func IsContainsKey(key string) bool {
-	_, ok := eventData[key]
+	_, ok := EventData[key]
 	return ok
 }
 
 func InitEventData() {
 	dataBytes := levelDB.DBGet(common.EventAllDataKey)
-	_ = json.Unmarshal(dataBytes, &eventData)
+	_ = json.Unmarshal(dataBytes, &EventData)
 }
 
 // 将事件消息转换成需要上链的交易
 func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
-	value := eventData[message.EventID]
+	value := EventData[message.EventID]
 	event, ok := value.(meta.Event)
 	if !ok {
 		return nil, errors.New("event type convert error")
@@ -36,7 +42,7 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 	subs := event.Subscriptions // 事件的订阅者id
 	var trans []meta.Transaction
 	for _, subKey := range subs {
-		subValue, ok := eventData[subKey]
+		subValue, ok := EventData[subKey]
 		if !ok {
 			log.Infof("sub key not exit: %s", subKey)
 			continue
@@ -65,3 +71,4 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 	}
 	return trans, nil
 }
+
