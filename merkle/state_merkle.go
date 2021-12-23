@@ -13,6 +13,7 @@ var StatePath string
 
 var version uint64 = 0 // 只有在账户信息变动时，版本号才加一
 
+// TODO: account实现JFTreeData
 func UpdateEventState(data []meta.JFTreeData, version uint64) (common.HashValue, error) {
 	db := jellyfish.NewTreeStore(StatePath)
 	defer db.Db.Close()

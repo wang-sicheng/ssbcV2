@@ -8,6 +8,7 @@ type Account struct {
 	PublicKey  string      `json:"publickey"`  // 账户公钥
 	PrivateKey string      `json:"privatekey"` // 账户私钥（用户的私钥不应该出现在这里，后续删除）
 	IsContract bool        `json:"iscontract"` // 是否是智能合约账户
+	Seq        int         `json:"seq"`        // 该账户下定义的事件序列号
 }
 
 type AccountData struct {

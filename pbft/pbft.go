@@ -11,7 +11,6 @@ import (
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
-	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"io/ioutil"
 	"net"
@@ -576,36 +575,45 @@ func (p *pbft) refreshState(b *meta.Block) {
 	txs := b.TX
 	// 需要更新到状态树的account
 	var accounts []meta.Account
+	// 需要更新的event，sub
+	var treeData []meta.JFTreeData
 	// 执行每一笔交易
 	for _, tx := range txs {
-		p.execute(tx, &accounts)
+		p.execute(tx, &accounts, &treeData)
 	}
-	if len(accounts) != 0 { // 当账户信息出现变动时才更新
-		stateRootHash, err := merkle.UpdateAccountState(accounts, merkle.GetVersion())
+	if len(accounts) != 0 && len(treeData) != 0 {
+		return
+	}
+	v := merkle.GetVersion() // state和event版本同步
+	if len(accounts) != 0 {
+		stateRootHash, err := merkle.UpdateAccountState(accounts, v)
 		if err != nil {
 			log.Error(err)
 		}
 		b.StateRoot = stateRootHash.Bytes()
 	}
+	if len(treeData) != 0 {
+		eventRootHash, err := merkle.UpdateEventState(treeData, v)
+		if err != nil {
+			log.Error(err)
+		}
+		b.EventRoot = eventRootHash.Bytes()
+	}
 }
 
-func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
+func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account, treeData *[]meta.JFTreeData) {
 	switch tx.Type {
 	case meta.Register:
 		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
 	case meta.Transfer:
 		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		*accounts = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
-		// 目前是单机版本，合约只由N0节点部署
-		if p.node.nodeID == "N0" {
-			//部署合约
-			contractName := tx.Contract
-			//生成build地址
-			path := "/smart_contract/contract/" + contractName + "/"
-			log.Info(path)
-			//smart_contract.BuildAndRun(path, contractName)
-		}
+		newAccount := account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract)
+		*accounts = append(*accounts, newAccount)
+		//更新事件数据，每个节点都执行
+		contractName := tx.Contract
+		eList, _ := event.UpdateEventData(contractName, newAccount.Address, tx.From)
+		*treeData = append(*treeData, eList...)
 	case meta.Invoke:
 		// 智能合约执行队列
 		var taskList []event.ContractTask
@@ -626,7 +634,7 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 				tx.Args,
 			})
 			for len(taskList) !=0 {
-				err := smart_contract.HandleContractTask(&taskList)
+				err := event.HandleContractTask(&taskList)
 				if err != nil {
 					log.Errorf("contract task handle error: %s", err)
 					continue

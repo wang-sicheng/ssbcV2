@@ -54,7 +54,7 @@ type Block struct {
 	Hash       []byte
 	TX         []Transaction
 	StateRoot  []byte
-	eventRoot  []byte
+	EventRoot  []byte
 }
 
 type BlockHeader struct {
