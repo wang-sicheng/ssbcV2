@@ -151,7 +151,7 @@ func sendNewContract(c meta.ContractPost) {
 	r := new(Request)
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
-	r.Message.ID = getRandom()
+	r.Message.ID = util.GetRandom()
 	r.Type = 0
 	tb, _ := json.Marshal(t)
 	r.Message.Content = string(tb)
@@ -171,7 +171,7 @@ func sendNewContract(c meta.ContractPost) {
 //账户注册
 func registerAccount(ctx *gin.Context) {
 	//首先生成公私钥
-	priKey, pubKey := GetKeyPair()
+	priKey, pubKey := util.GetKeyPair()
 	//账户地址
 	//将公钥进行hash
 	pubHash, _ := util.CalculateHash(pubKey)
@@ -217,7 +217,7 @@ func registerAccount(ctx *gin.Context) {
 	r := new(Request)
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
-	r.Message.ID = getRandom()
+	r.Message.ID = util.GetRandom()
 	r.Type = 0
 
 	tb, _ := json.Marshal(t)
@@ -313,7 +313,7 @@ func postEvent(ctx *gin.Context) {
 	}
 	emBytes, _ := json.Marshal(em)
 	req.Message.Content = string(emBytes)
-	req.Message.ID = getRandom()
+	req.Message.ID = util.GetRandom()
 	req.Type = 1
 	reqBytes, _ := json.Marshal(req)
 	msg := meta.TCPMessage{
@@ -371,6 +371,9 @@ func postTran(ctx *gin.Context) {
 		Sign:      nil,
 		Type:      pt.Type,
 	}
+	if t.Type == meta.Invoke {
+		t.To = account.GetAccount(t.Contract).Address
+	}
 	//客户端在转发交易之前需要对交易进行签名
 	//先将交易进行hash
 	tByte, _ := json.Marshal(t)
@@ -380,7 +383,7 @@ func postTran(ctx *gin.Context) {
 	r := new(Request)
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
-	r.Message.ID = getRandom()
+	r.Message.ID = util.GetRandom()
 	r.Type = 0
 
 	tb, _ := json.Marshal(t)

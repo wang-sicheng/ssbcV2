@@ -608,7 +608,7 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account, treeData *
 	case meta.Transfer:
 		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		newAccount := account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract)
+		newAccount := account.CreateContract(tx.Contract, tx.Data.Code, tx.From)
 		*accounts = append(*accounts, newAccount)
 		//更新事件数据，每个节点都执行
 		contractName := tx.Contract

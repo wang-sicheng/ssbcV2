@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/util"
 	"os"
 	"strconv"
 )
@@ -29,7 +30,7 @@ func GenRsaKeys() {
 					log.Error()
 				}
 			}
-			priv, pub := GetKeyPair()
+			priv, pub := util.GetKeyPair()
 			privFileName := "Keys/N" + strconv.Itoa(i) + "/N" + strconv.Itoa(i) + "_RSA_PIV"
 			file, err := os.OpenFile(privFileName, os.O_RDWR|os.O_CREATE, 0777)
 			if err != nil {
@@ -48,32 +49,6 @@ func GenRsaKeys() {
 		}
 		log.Info("已为节点们生成RSA公私钥")
 	}
-}
-
-//生成rsa公私钥
-func GetKeyPair() (prvkey, pubkey []byte) {
-	// 生成私钥文件
-	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		panic(err)
-	}
-	derStream := x509.MarshalPKCS1PrivateKey(privateKey)
-	block := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: derStream,
-	}
-	prvkey = pem.EncodeToMemory(block)
-	publicKey := &privateKey.PublicKey
-	derPkix, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		panic(err)
-	}
-	block = &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derPkix,
-	}
-	pubkey = pem.EncodeToMemory(block)
-	return
 }
 
 //判断文件或文件夹是否存在

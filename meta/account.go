@@ -14,8 +14,5 @@ type Account struct {
 type AccountData struct {
 	Code         string `json:"code"`         // 合约代码
 	ContractName string `json:"contractname"` // 合约名称
-}
-
-func (ac *Account) getValue() []byte {
-	return []byte(ac.PrivateKey)
+	Publisher    string `json:"publisher"`	  // 部署合约的外部账户地址
 }

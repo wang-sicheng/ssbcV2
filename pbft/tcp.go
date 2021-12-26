@@ -105,7 +105,7 @@ func clientExecute(tx meta.Transaction, accounts *[]meta.Account) {
 	case meta.Transfer:
 		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		*accounts = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
+		*accounts = append(*accounts, account.CreateContract(tx.Contract, tx.Data.Code, tx.From))
 	case meta.Invoke:
 	default:
 		log.Infof("未知的交易类型")

@@ -1,11 +1,13 @@
 package account
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
+	"github.com/ssbcV2/util"
 )
 
 /* 这里封装了所有的对账户的操作
@@ -40,18 +42,18 @@ func CreateAccount(address, publicKey string, balance int) meta.Account {
 }
 
 // 创建智能合约账户
-func CreateContract(address, publicKey, code, name string) meta.Account {
+func CreateContract(name, code, publisher string) meta.Account {
 	contract := meta.Account{
-		Address: address,
+		Address: generateContractAddress(),
 		Balance: 0,
 		Data: meta.AccountData{
 			Code:         code,
 			ContractName: name,
+			Publisher:    publisher,
 		},
-		PublicKey:  publicKey,
 		IsContract: true,
 	}
-	// 用智能合约的名称作为key，合约地址暂时没有使用
+	// 用智能合约的名称作为key，以便调用时填名称即可
 	state.Accounts[name] = contract
 
 	PutIntoDisk(state.Accounts)
@@ -130,4 +132,17 @@ func IsOrdinaryAccount(address string) bool {
 // 是否为智能合约账户账户地址
 func IsContractAccount(address string) bool {
 	return state.Accounts[address].IsContract
+}
+
+// 生成合约地址（虽然合约地址不是由公私钥生成的）
+func generateContractAddress() string {
+	//首先生成公私钥
+	_, pubKey := util.GetKeyPair()
+	//账户地址
+	//将公钥进行hash
+	pubHash, _ := util.CalculateHash(pubKey)
+	//将公钥hash作为账户地址,256位
+	address := hex.EncodeToString(pubHash)
+	log.Infof("contract account address len: %d", len(address))
+	return address
 }
