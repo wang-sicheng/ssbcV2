@@ -8,7 +8,7 @@ import (
 )
 
 func TestGenerateKey(t *testing.T) {
-	pri, pub := GetKeyPair()
+	pri, pub := util.GetKeyPair()
 	log.Info("pri=", string(pri))
 	log.Info("pub=", string(pub))
 	//将公钥进行hash

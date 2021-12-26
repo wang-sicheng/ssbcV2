@@ -90,19 +90,6 @@ func (p *pbft) TcpListen() {
 }
 
 func (p *pbft) handleNewConn(conn net.Conn) {
-	//for {
-	//
-	//	buf := make([]byte, 4096)
-	//	n, err := conn.Read(buf) //从conn读取
-	//	if err == nil {
-	//		log.Info("接收到消息：", string(buf[:n]))
-	//		p.handleRequest(buf[:n], conn)
-	//	} else if err != io.EOF {
-	//		log.Error("[handleNewConn] err:", err)
-	//	}
-	//}
-
-	//Version2
 	b, err := ioutil.ReadAll(conn)
 	if err != nil {
 		log.Error("[handleNewConn] err:", err)
@@ -125,6 +112,22 @@ func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 	//其他节点会接收到主节点的区块链同步回复
 	if msg.Type == common.BlockSynResMsg {
 		network.HandleBlockSynResMsg(msg, conn)
+	}
+
+	// 只有client节点处理这个case
+	if msg.Type == common.PBFTReply && p.node.nodeID == "client" {
+		bcs := chain.GetCurrentBlockChain()
+		newBC := new(meta.Block)
+		bc := msg.Content
+		err := json.Unmarshal(bc, newBC)
+		util.DealJsonErr("clientHandleTcpMsg", err)
+		//判断是否已将reply的新区块入库了
+		if newBC.Height == len(bcs) {
+			bcs = append(bcs, *newBC)
+			chain.StoreBlockChain(bcs)
+			//状态更新
+			p.refreshState(newBC)
+		}
 	}
 }
 
@@ -179,7 +182,6 @@ func (p *pbft) handleClientRequest(content []byte) {
 			// 将消息反馈至前端
 			return
 		}
-		//trans = p.parseAndDealTransaction(trans)
 		trans.Timestamp = time.Now().String()
 		trans.Id, _ = util.CalculateHash([]byte(trans.Timestamp))
 		transList = append(transList, trans)
@@ -212,7 +214,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 		//主节点接收到的交易已经到达阈值，打包新区块进行PBFT共识
 		newBlock := chain.GenerateNewBlock(p.transPool[index])
 		//主节点对打包区块进行签名
-		blockSign := p.RsaSignWithSha256(newBlock.Hash, p.node.rsaPrivKey)
+		blockSign := util.RsaSignWithSha256(newBlock.Hash, p.node.rsaPrivKey)
 		newBlock.Signature = blockSign
 		newBlockMsg, err := json.Marshal(newBlock)
 		util.DealJsonErr("handleClientRequest", err)
@@ -226,7 +228,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 		p.messagePool[digest] = *r
 		//主节点对消息摘要进行签名
 		digestByte, _ := hex.DecodeString(digest)
-		signInfo := p.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
+		signInfo := util.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
 		//拼接成PrePrepare，准备发往follower节点
 		pp := PrePrepare{*r, digest, p.sequenceID, signInfo}
 		b, err := json.Marshal(pp)
@@ -245,125 +247,6 @@ func (p *pbft) handleClientRequest(content []byte) {
 		log.Infof("主节点已将交易存储至交易池，交易详情：%+v", transList)
 	}
 }
-
-//主节点收到交易后需要对交易进行解析处理
-//func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
-//	log.Info("主节点接收到的交易为:", t)
-//	//首先判断该笔交易是否为智能合约调用
-//	if t.Contract != "" {
-//		//先判断是合约调用还是合约部署
-//		if t.To == commonconst.ContractDeployAddress {
-//			//合约部署处理
-//			//step1：生成合约账户
-//			priKey, PubKey := GetKeyPair()
-//			//将公钥进行hash
-//			pubHash, _ := util.CalculateHash(PubKey)
-//			//将公钥的前20位作为账户地址
-//			addr := hex.EncodeToString(pubHash[:20])
-//			ad := meta.AccountData{
-//				Code:         t.Data.Code,
-//				ContractName: t.Contract,
-//			}
-//			account := meta.Account{
-//				Address:    addr,
-//				Balance:    0,
-//				Data:       ad,
-//				PublicKey:  string(PubKey),
-//				PrivateKey: string(priKey),
-//				IsContract: true,
-//			}
-//			accountB, _ := json.Marshal(account)
-//			set := make(map[string]string)
-//			accountKey := addr
-//			set[accountKey] = string(accountB)
-//			t.Data.Set = set
-//		} else {
-//			//合约调用处理--调用智能合约产生读写集
-//			t.Args["sender"] = t.From
-//			log.Infof("调用合约：%v，方法：%v，参数：%v\n", t.Contract, t.Method, t.Args)
-//			go smart_contract.CallContract(t.Contract, t.Method, t.Args)
-//			//if err!=nil{
-//			//	log.Error("合约调用失败")
-//			//	//调用失败
-//			//}else {
-//			//	//交易的data字段赋值
-//			//	t.Data.Read=res.Read
-//			//	t.Data.Set=res.Set
-//			//}
-//		}
-//	} else {
-//		//非智能合约调用交易-->即简单的转账交易(而且是简单的本链转账交易)
-//		t = p.dealLocalTransFer(t)
-//	}
-//	return t
-//}
-
-//func (p *pbft) dealLocalTransFer(t meta.Transaction) meta.Transaction {
-//	log.Infof("准备处理转账交易。")
-//	from := t.From
-//	to := t.To
-//	value := t.Value
-//	//step1：简单的余额校验，转出账户是否具有转账条件
-//	fromKey := from
-//	fromA := levelDB.DBGet(fromKey)
-//	fromAccount := meta.Account{}
-//	err := json.Unmarshal(fromA, &fromAccount)
-//
-//	toKey := to
-//	if from == commonconst.FaucetAccountAddress {
-//		log.Infof("准备创建账户。")
-//		newAccount := meta.Account{
-//			Address:    toKey,
-//			Balance:    t.Value,
-//			Data:       meta.AccountData{},
-//			PrivateKey: "",
-//			PublicKey:  t.PublicKey,
-//		}
-//		newAccountBytes, _ := json.Marshal(newAccount)
-//		levelDB.DBPut(to, newAccountBytes)
-//
-//		setMap := make(map[string]string)
-//
-//		toRefresh, _ := json.Marshal(newAccount)
-//		setMap[to] = string(toRefresh)
-//		//交易的写集赋值
-//		t.Data.Set = setMap
-//		return t
-//	}
-//	toA := levelDB.DBGet(toKey)
-//	toAccount := meta.Account{}
-//	err = json.Unmarshal(toA, &toAccount)
-//
-//	log.Infof("%v\n", fromAccount)
-//	log.Infof("%v\n", toAccount)
-//
-//	if err != nil {
-//		log.Error("[dealLocalTransFer] json unmarshal failed,err:", err)
-//	}
-//	if fromAccount.Balance < value {
-//		return t
-//	} else {
-//		//余额够，需要进行状态变更
-//		toKey := to
-//		toA := levelDB.DBGet(toKey)
-//		toAccount := meta.Account{}
-//		err := json.Unmarshal(toA, &toAccount)
-//		if err != nil {
-//			log.Error("[dealLocalTransFer] json unmarshal failed,err:", err)
-//		}
-//		//from的钱减，to的钱加
-//		fromAccount.Balance = fromAccount.Balance - value
-//		toAccount.Balance = toAccount.Balance + value
-//		setMap := make(map[string]string)
-//		fromRefresh, _ := json.Marshal(fromAccount)
-//		toRefresh, _ := json.Marshal(toAccount)
-//		setMap[fromKey] = string(fromRefresh)
-//		setMap[toKey] = string(toRefresh)
-//		//交易的写集赋值
-//		t.Data.Set = setMap
-//		return t
-//	}
-//}
 
 //处理预准备消息
 func (p *pbft) handlePrePrepare(content []byte) {
@@ -395,7 +278,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		log.Info("信息摘要对不上，拒绝进行prepare广播")
 	} else if p.sequenceID+1 != pp.SequenceID {
 		log.Info("消息序号对不上，拒绝进行prepare广播")
-	} else if !p.RsaVerySignWithSha256(digestByte, pp.Sign, primaryNodePubKey) {
+	} else if !util.RsaVerySignWithSha256(digestByte, pp.Sign, primaryNodePubKey) {
 		log.Info("主节点签名验证失败！,拒绝进行prepare广播")
 	} else {
 		//序号赋值
@@ -404,7 +287,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		log.Info("已将消息存入临时节点池")
 		p.messagePool[pp.Digest] = pp.RequestMessage
 		//节点使用私钥对其签名
-		sign := p.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
+		sign := util.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
 		//拼接成Prepare
 		pre := Prepare{pp.Digest, pp.SequenceID, p.node.nodeID, sign}
 
@@ -453,7 +336,7 @@ func (p *pbft) handlePrepare(content []byte) {
 		log.Info("当前临时消息池无此摘要，拒绝执行commit广播")
 	} else if p.sequenceID != pre.SequenceID {
 		log.Info("消息序号对不上，拒绝执行commit广播")
-	} else if !p.RsaVerySignWithSha256(digestByte, pre.Sign, MessageNodePubKey) {
+	} else if !util.RsaVerySignWithSha256(digestByte, pre.Sign, MessageNodePubKey) {
 		log.Info("节点签名验证失败！,拒绝执行commit广播")
 	} else {
 		p.setPrePareConfirmMap(pre.Digest, pre.NodeID, true)
@@ -492,7 +375,7 @@ func (p *pbft) handlePrepare(content []byte) {
 			//*******************************************************************
 
 			//节点使用私钥对其签名
-			sign := p.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
+			sign := util.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
 			c := Commit{pre.Digest, pre.SequenceID, p.node.nodeID, sign}
 			bc, err := json.Marshal(c)
 			if err != nil {
@@ -528,7 +411,7 @@ func (p *pbft) handleCommit(content []byte) {
 		log.Info("当前prepare池无此摘要，拒绝将信息持久化到本地消息池")
 	} else if p.sequenceID != c.SequenceID {
 		log.Info("消息序号对不上，拒绝将信息持久化到本地消息池")
-	} else if !p.RsaVerySignWithSha256(digestByte, c.Sign, MessageNodePubKey) {
+	} else if !util.RsaVerySignWithSha256(digestByte, c.Sign, MessageNodePubKey) {
 		log.Info("节点签名验证失败！,拒绝将信息持久化到本地消息池")
 	} else {
 		p.setCommitConfirmMap(c.Digest, c.NodeID, true)

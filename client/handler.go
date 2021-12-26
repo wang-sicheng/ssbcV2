@@ -1,4 +1,4 @@
-package pbft
+package client
 
 import (
 	"encoding/hex"
@@ -11,6 +11,7 @@ import (
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
+	"github.com/ssbcV2/pbft"
 	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"net/http"
@@ -18,36 +19,6 @@ import (
 	"strconv"
 	"time"
 )
-
-//5.21-版本升级web服务使用gin框架
-func clientHttpListenV2() {
-	r := gin.Default()
-	//使用跨域组件
-	r.Use(Cors())
-	//获取到当前区块链
-	r.GET("/getBlockChain", getBlockChain)
-	//获取到指定高度的区块
-	r.GET("/getBlock", getBlock)
-	//获取到指定高度区块的交易列表
-	r.GET("/getOneBlockTrans", getBlockTrans)
-	//提交一笔交易
-	r.POST("/postTran", postTran)
-	//获取全部交易
-	r.GET("/getAllTrans", getAllTrans)
-	r.GET("getAllAccounts", getAllAccounts)
-	//注册账户
-	r.GET("/registerAccount", registerAccount)
-	//提交一笔跨链交易
-	//http.HandleFunc("/postCrossTran", server.postCrossTran)
-	//提交智能合约
-	r.POST("/postContract", postContract)
-	//提供链上query服务--既能服务于普通节点也能服务于智能合约
-	r.GET("/query", query)
-	//r.POST("/decrypt",decrypt)
-	// 发起事件
-	r.POST("/postEvent", postEvent)
-	r.Run(common.ClientToUserAddr)
-}
 
 func Cors() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -85,7 +56,7 @@ func postContract(ctx *gin.Context) {
 	//得先获取到合约名
 	contractName := postC.Name
 	//先创建合约文件夹
-	if isExist("./smart_contract/contract/" + contractName) {
+	if util.FileExists("./smart_contract/contract/" + contractName) {
 		log.Error("该合约已存在")
 		hr := warpBadHttpResponse("同名合约已存在")
 		ctx.JSON(http.StatusBadRequest, hr)
@@ -148,7 +119,7 @@ func sendNewContract(c meta.ContractPost) {
 	t.Hash, _ = util.CalculateHash(tByte)
 	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(c.PrivateKey))
 	//客户端需要把交易信息发送给主节点
-	r := new(Request)
+	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = util.GetRandom()
@@ -214,7 +185,7 @@ func registerAccount(ctx *gin.Context) {
 	t.Hash, _ = util.CalculateHash(tByte)
 	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
 	//客户端需要把交易信息发送给主节点
-	r := new(Request)
+	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = util.GetRandom()
@@ -306,8 +277,8 @@ func postEvent(ctx *gin.Context) {
 		TimeStamp: "",
 		Hash: nil,
 	}
-	req := Request{
-		Message:    Message{},
+	req := pbft.Request{
+		Message:    pbft.Message{},
 		Timestamp:  time.Now().UnixNano(),
 		ClientAddr: common.ClientToNodeAddr,
 	}
@@ -380,7 +351,7 @@ func postTran(ctx *gin.Context) {
 	t.Hash, _ = util.CalculateHash(tByte)
 	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
 	//客户端需要把交易信息发送给主节点
-	r := new(Request)
+	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
 	r.ClientAddr = common.ClientToNodeAddr
 	r.Message.ID = util.GetRandom()
