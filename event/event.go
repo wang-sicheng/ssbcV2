@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/smart_contract"
@@ -15,11 +16,7 @@ import (
 
 var EventData map[string]meta.JFTreeData
 
-type ContractTask struct {
-	Name string
-	Method string
-	Args map[string]string
-}
+
 
 
 func init() {
@@ -83,12 +80,14 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 
 // 执行智能合约，并将事件触发的智能合约放入队列
 // todo：将智能合约的执行结果更新到accounts
-func HandleContractTask(taskList *[]ContractTask) error {
-	task := (*taskList)[0]
-	*taskList = (*taskList)[1:]
+func HandleContractTask() error {
+	task := global.TaskList[0]
+	global.TaskList = global.TaskList[1:]
 
+	smart_contract.LoadInfo(task)		// 加载合约的相关信息，供合约内部使用
 	res, err := smart_contract.CallContract(task.Name, task.Method, task.Args)
 	if err != nil {
+		log.Info(err)
 		return err
 	}
 	data, ok := res.(meta.ContractUpdateData)
@@ -117,7 +116,9 @@ func HandleContractTask(taskList *[]ContractTask) error {
 				log.Errorf("sub data decode error")
 				continue
 			}
-			*taskList = append(*taskList, ContractTask{
+			global.TaskList = append(global.TaskList, meta.ContractTask{
+				Caller: sData.Callback.Caller,
+				Value: sData.Callback.Value,
 				Name:   sData.Callback.Contract,
 				Method: sData.Callback.Method,
 				Args:   sData.Callback.Args,

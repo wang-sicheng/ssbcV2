@@ -38,6 +38,8 @@ type EventMessage struct {
 }
 
 type Callback struct {
+	Caller string		// 调用者地址
+	Value  int			// 调用合约的转账金额
 	Contract string
 	Method string
 	Args map[string]string

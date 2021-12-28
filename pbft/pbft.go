@@ -8,6 +8,7 @@ import (
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/event"
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
@@ -456,50 +457,53 @@ func (p *pbft) handleCommit(content []byte) {
 func (p *pbft) refreshState(b *meta.Block) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
-	// 需要更新到状态树的account
-	var accounts []meta.Account
-	// 需要更新的event，sub
-	var treeData []meta.JFTreeData
+
 	// 执行每一笔交易
 	for _, tx := range txs {
-		p.execute(tx, &accounts, &treeData)
+		p.execute(tx)
 	}
-	if len(accounts) != 0 && len(treeData) != 0 {
+	if len(global.ChangedAccounts) != 0 && len(global.TreeData) != 0 {
 		return
 	}
 	v := merkle.GetVersion() // state和event版本同步
-	if len(accounts) != 0 {
-		stateRootHash, err := merkle.UpdateAccountState(accounts, v)
+	if len(global.ChangedAccounts) != 0 {
+		stateRootHash, err := merkle.UpdateAccountState(global.ChangedAccounts, v)
 		if err != nil {
 			log.Error(err)
 		}
 		b.StateRoot = stateRootHash.Bytes()
 	}
-	if len(treeData) != 0 {
-		eventRootHash, err := merkle.UpdateEventState(treeData, v)
+	if len(global.TreeData) != 0 {
+		eventRootHash, err := merkle.UpdateEventState(global.TreeData, v)
 		if err != nil {
 			log.Error(err)
 		}
 		b.EventRoot = eventRootHash.Bytes()
 	}
+	global.ChangedAccounts = []meta.Account{}	// 本轮区块d的状态修改已持久化，清空列表
+	global.TreeData = []meta.JFTreeData{}		// 本轮区块的event，sub已持久化，清空列表
 }
 
-func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account, treeData *[]meta.JFTreeData) {
+func (p *pbft) execute(tx meta.Transaction) {
 	switch tx.Type {
 	case meta.Register:
-		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
+		global.ChangedAccounts = append(global.ChangedAccounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
 	case meta.Transfer:
-		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
+		global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
 		newAccount := account.CreateContract(tx.Contract, tx.Data.Code, tx.From)
-		*accounts = append(*accounts, newAccount)
+		global.ChangedAccounts = append(global.ChangedAccounts, newAccount)
 		//更新事件数据，每个节点都执行
 		contractName := tx.Contract
 		eList, _ := event.UpdateEventData(contractName, newAccount.Address, tx.From)
-		*treeData = append(*treeData, eList...)
+		global.TreeData = append(global.TreeData, eList...)
 	case meta.Invoke:
-		// 智能合约执行队列
-		var taskList []event.ContractTask
+		// 调用合约的同时向合约账户转账
+		if tx.Value > 0 {
+			global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value))
+			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.Contract, tx.Value))
+		}
+
 		// 目前是单机版本，合约只由N0节点调用
 		if p.node.nodeID == "N0" {
 			// 调用合约
@@ -511,13 +515,15 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account, treeData *
 			//}
 			//log.Infof("调用结果：%v\n", result)
 			tx.Args["sender"] = tx.From
-			taskList = append(taskList, event.ContractTask{
+			global.TaskList = append(global.TaskList, meta.ContractTask{
+				tx.From,
+				tx.Value,
 				tx.Contract,
 				tx.Method,
 				tx.Args,
 			})
-			for len(taskList) !=0 {
-				err := event.HandleContractTask(&taskList)
+			for len(global.TaskList) !=0 {
+				err := event.HandleContractTask()
 				if err != nil {
 					log.Errorf("contract task handle error: %s", err)
 					continue
