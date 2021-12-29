@@ -23,7 +23,8 @@ func main() {
 		log.Error("输入的参数有误！")
 	}
 	nodeID := os.Args[1]
-	merkle.StatePath = "./levelDB/db/path/statedb/" + nodeID // 账户数据暂时使用单独的数据库存储
+	merkle.AccountStatePath = "./levelDB/db/path/account/" + nodeID // 账户状态和事件状态分开存储
+	merkle.EventStatePath = "./levelDB/db/path/event/" + nodeID
 	// 数据库连接
 	levelDB.InitDB(nodeID)
 
@@ -51,15 +52,28 @@ func main() {
 //初始化
 func initBlockChain(ID string) {
 	chain.BlockChain = make([]meta.Block, 0)
-	//先判断节点是否为主节点
-	if ID == "N0" {
-		//判断是否无创世区块
-		bc := chain.GetCurrentBlockChain()
-		if len(bc) == 0 {
+	var accounts []meta.JFTreeData
+	var events []meta.JFTreeData
+
+	bc := chain.GetCurrentBlockChain()
+	// 初始化创世区块前，所有节点先初始化0版本的state
+	if len(bc) == 0 {
+		merkle.InitAccount.Address = "init account address"
+		merkle.InitEvent.EventID = "init event id"
+		accounts = append(accounts, merkle.InitAccount)
+		events = append(events, merkle.InitEvent)
+		stateRootHash, _ := merkle.UpdateStateTree(accounts, 0, merkle.AccountStatePath)
+		eventRootHash, _ := merkle.UpdateStateTree(events, 0, merkle.EventStatePath)
+		if ID == "N0" {
 			gb := chain.GenerateGenesisBlock()
+			gb.StateRoot = stateRootHash.Bytes()
+			gb.EventRoot = eventRootHash.Bytes()
 			chain.BlockChain = append(chain.BlockChain, gb)
 			chain.StoreBlockChain(chain.BlockChain)
-		} else {
+		}
+	}
+	if ID == "N0" {
+		if len(bc) != 0 {
 			chain.BlockChain = bc
 		}
 	} else {

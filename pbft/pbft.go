@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
+	common2 "github.com/rjkris/go-jellyfish-merkletree/common"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
@@ -127,7 +128,7 @@ func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 			bcs = append(bcs, *newBC)
 			chain.StoreBlockChain(bcs)
 			//状态更新
-			p.refreshState(newBC)
+			p.refreshState(newBC, len(bcs)-1)
 		}
 	}
 }
@@ -435,7 +436,7 @@ func (p *pbft) handleCommit(content []byte) {
 			err = json.Unmarshal([]byte(newBCMsg), newBC)
 			util.DealJsonErr("handleCommit", err)
 			//先更新状态树，得到stateRoot，再上链
-			p.refreshState(newBC)
+			p.refreshState(newBC, len(bcs))
 
 			bcs = append(bcs, *newBC)
 			chain.StoreBlockChain(bcs)
@@ -454,7 +455,7 @@ func (p *pbft) handleCommit(content []byte) {
 }
 
 // 状态数据库更新
-func (p *pbft) refreshState(b *meta.Block) {
+func (p *pbft) refreshState(b *meta.Block, height int) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
 
@@ -465,22 +466,22 @@ func (p *pbft) refreshState(b *meta.Block) {
 	if len(global.ChangedAccounts) != 0 && len(global.TreeData) != 0 {
 		return
 	}
-	v := merkle.GetVersion() // state和event版本同步
+	// state和event版本同步,和区块高度相同
+	var stateRootHash, eventRootHash common2.HashValue
 	if len(global.ChangedAccounts) != 0 {
-		stateRootHash, err := merkle.UpdateAccountState(global.ChangedAccounts, v)
-		if err != nil {
-			log.Error(err)
-		}
-		b.StateRoot = stateRootHash.Bytes()
+		stateRootHash, _ = merkle.UpdateStateTree(global.ChangedAccounts, uint64(height), merkle.AccountStatePath)
+	} else { // 需要更新的账户为空时，更新初始账户
+		stateRootHash, _ = merkle.UpdateStateTree([]meta.JFTreeData{merkle.InitAccount},uint64(height), merkle.AccountStatePath)
 	}
+	b.StateRoot = stateRootHash.Bytes()
 	if len(global.TreeData) != 0 {
-		eventRootHash, err := merkle.UpdateEventState(global.TreeData, v)
-		if err != nil {
-			log.Error(err)
-		}
-		b.EventRoot = eventRootHash.Bytes()
+		eventRootHash, _ = merkle.UpdateStateTree(global.TreeData, uint64(height), merkle.EventStatePath)
+	} else {
+		eventRootHash, _ = merkle.UpdateStateTree([]meta.JFTreeData{merkle.InitEvent}, uint64(height), merkle.EventStatePath)
 	}
-	global.ChangedAccounts = []meta.Account{}	// 本轮区块d的状态修改已持久化，清空列表
+	b.EventRoot = eventRootHash.Bytes()
+
+	global.ChangedAccounts = []meta.JFTreeData{}	// 本轮区块d的状态修改已持久化，清空列表
 	global.TreeData = []meta.JFTreeData{}		// 本轮区块的event，sub已持久化，清空列表
 }
 

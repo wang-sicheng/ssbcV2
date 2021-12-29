@@ -1,5 +1,10 @@
 package meta
 
+import (
+	"encoding/hex"
+	"github.com/rjkris/go-jellyfish-merkletree/common"
+)
+
 // 账户结构（普通账户和智能合约账户共用，通过IsContract字段区分）
 type Account struct {
 	Address    string      `json:"address"`    // 账户地址
@@ -15,4 +20,9 @@ type AccountData struct {
 	Code         string `json:"code"`         // 合约代码
 	ContractName string `json:"contractname"` // 合约名称
 	Publisher    string `json:"publisher"`	  // 部署合约的外部账户地址
+}
+
+func (ac Account)GetKey() common.HashValue {
+	keyBytes, _ := hex.DecodeString(ac.Address)
+	return common.BytesToHash(keyBytes)
 }

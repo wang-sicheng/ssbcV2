@@ -23,7 +23,8 @@ func RandString(len int) string {
 }
 
 func TestOneUpdate(t *testing.T) {
-	var accounts []meta.Account
+	var accounts []meta.JFTreeData
+	path := "../levelDB/db/path/statedb"
 	accounts = append(accounts, meta.Account{
 		Address:    "jklirogregerg",
 		Balance:    0,
@@ -32,15 +33,16 @@ func TestOneUpdate(t *testing.T) {
 		PrivateKey: "",
 		IsContract: false,
 	})
-	_, err := UpdateAccountState(accounts, uint64(0))
+	_, err := UpdateStateTree(accounts, uint64(0), path)
+	_, err = UpdateStateTree(accounts, uint64(3), path)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestUpdateAndVerify(t *testing.T) {
-	var accounts []meta.Account
-	nums := 1000
+	var accounts []meta.JFTreeData
+	nums := 100
 	//var rootHashs []common.HashValue
 	for i := 0; i < nums; i++ {
 		//key := RandString(32)// 随机生成address
@@ -56,8 +58,8 @@ func TestUpdateAndVerify(t *testing.T) {
 			IsContract: false,
 		})
 	}
-	StatePath = "../levelDB/db/path/statedb"
-	rootHash, _ := UpdateAccountState(accounts, uint64(0))
+	path := "../levelDB/db/path/statedb"
+	rootHash, _ := UpdateStateTree(accounts, uint64(0), path)
 	//for ver:=0; ver < 10; ver++ {
 	//	rootHash, err := UpdateAccountState(accounts[ver*1000:(ver+1)*1000], uint64(ver))
 	//	if err != nil {
@@ -74,8 +76,10 @@ func TestUpdateAndVerify(t *testing.T) {
 	//	assert.Equal(t, verifyRes, true)
 	//}
 	for i := 0; i < nums; i++ {
-		account := accounts[i]
-		actualAccount, proof, _ := getProofValue(account.Address, uint64(0))
+		account, _ := accounts[i].(meta.Account)
+		actualAccountBytes, proof, _ := getProofValue(account.Address, uint64(0), path)
+		var actualAccount meta.Account
+		_ = json.Unmarshal(actualAccountBytes, &actualAccount)
 		t.Logf("actualAccount: %+v, address: %v", actualAccount, []byte(actualAccount.Address))
 		t.Logf("account: %+v, address: %v", account, []byte(account.Address))
 		assert.Equal(t, actualAccount, account)

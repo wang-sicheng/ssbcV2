@@ -9,13 +9,15 @@ import (
 	"github.com/ssbcV2/meta"
 )
 
-var StatePath string
+var AccountStatePath string
+var EventStatePath string
 
 var version uint64 = 0 // 只有在账户信息变动时，版本号才加一
+var InitAccount meta.Account
+var InitEvent meta.Event
 
-// TODO: account实现JFTreeData
-func UpdateEventState(data []meta.JFTreeData, version uint64) (common.HashValue, error) {
-	db := jellyfish.NewTreeStore(StatePath)
+func UpdateStateTree(data []meta.JFTreeData, version uint64, path string) (common.HashValue, error) {
+	db := jellyfish.NewTreeStore(path)
 	defer db.Db.Close()
 	tree := jellyfish.JfMerkleTree{
 		db,
@@ -38,62 +40,27 @@ func UpdateEventState(data []meta.JFTreeData, version uint64) (common.HashValue,
 	return rootHash, nil
 }
 
-// 更新账户state数据到新的版本，生成新的root hash
-func UpdateAccountState(accounts []meta.Account, version uint64) (common.HashValue, error) {
-	db := jellyfish.NewTreeStore(StatePath)
-	defer db.Db.Close()
-	tree := jellyfish.JfMerkleTree{
-		db,
-		nil,
-	}
-	var kvs []jellyfish.ValueSetItem
-	for _, account := range accounts {
-		addressBytes, _ := hex.DecodeString(account.Address)
-		log.Infof("after hex decode, address len: %d", len(addressBytes))
-		//k := common.BytesToHash([]byte(account.Address))
-		k := common.BytesToHash(addressBytes)
-		accountBytes, _ := json.Marshal(account)
-		kvs = append(kvs, jellyfish.ValueSetItem{
-			k,
-			jellyfish.ValueT{accountBytes},
-		})
-	}
-	rootHash, batch := tree.PutValueSet(kvs, jellyfish.Version(version))
-	err := db.WriteTreeUpdateBatch(batch)
-	if err != nil {
-		log.Errorf("state update batch error: %s \n", err)
-		return rootHash, err
-	}
-	return rootHash, nil
-}
-
 // 获取账户数据和proof
-func getProofValue(address string, version uint64) (meta.Account, jellyfish.SparseMerkleProof, error) {
-	db := jellyfish.NewTreeStore(StatePath)
+func getProofValue(address string, version uint64, path string) ([]byte, jellyfish.SparseMerkleProof, error) {
+	db := jellyfish.NewTreeStore(path)
 	defer db.Db.Close()
 	tree := jellyfish.JfMerkleTree{db, nil}
 	addressBytes, _ := hex.DecodeString(address)
 	k := common.BytesToHash(addressBytes)
 	proofValue, proof := tree.GetWithProof(k, jellyfish.Version(version))
-	var account meta.Account
-	err := json.Unmarshal(proofValue.GetValue(), &account)
-	if err != nil {
-		log.Errorf("proofValue unmarshal error: %s\n", err)
-		return account, proof, err
-	}
-	return account, proof, nil
+	return proofValue.GetValue(), proof, nil
 }
 
 // 存在性验证
-func ProofVerify(rootHash common.HashValue, proof jellyfish.SparseMerkleProof, address string, value meta.Account) (bool, error) {
+func ProofVerify(rootHash common.HashValue, proof jellyfish.SparseMerkleProof, address string, value meta.JFTreeData) (bool, error) {
 	addressBytes, _ := hex.DecodeString(address)
 	k := common.BytesToHash(addressBytes)
-	accountBytes, err := json.Marshal(value)
+	dataBytes, err := json.Marshal(value)
 	if err != nil {
 		log.Errorf("account marshal error: %s", err)
 		return false, err
 	}
-	res := proof.Verify(rootHash, k, jellyfish.ValueT{accountBytes})
+	res := proof.Verify(rootHash, k, jellyfish.ValueT{dataBytes})
 	return res, nil
 }
 
