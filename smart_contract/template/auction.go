@@ -47,6 +47,7 @@ func End(args map[string]string) (interface{}, error) {
 		log.Info("重复调用ActionEnd")
 		return nil, errors.New("重复调用ActionEnd")
 	}
+	ended = true
 
 	smart_contract.Transfer(beneficiary, bids[highestBidder]) // 最高出价人拍卖成功
 	for bidder, amount := range bids {
