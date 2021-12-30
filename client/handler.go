@@ -50,19 +50,34 @@ func Cors() gin.HandlerFunc {
 func postContract(ctx *gin.Context) {
 	postC := meta.ContractPost{}
 	_ = ctx.ShouldBind(&postC)
+
+	from := postC.Account
+	if !account.ContainsAddress(from) {
+		log.Error("发起地址不存在")
+		hr := warpGoodHttpResponse("发起地址不存在")
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
+
 	// 获取合约名称
 	contractName := postC.Name
+	if contractName == "" {
+		log.Error("合约名称不能为空")
+		hr := warpGoodHttpResponse("合约名称不能为空")
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
 	if account.ContainsAddress(contractName) {
 		log.Error("该合约已存在")
-		hr := warpBadHttpResponse("同名合约已存在")
-		ctx.JSON(http.StatusBadRequest, hr)
-		return
-	} else {
-		// 封装为交易发送至主节点，经共识后真正部署
-		go sendNewContract(postC)
-		hr := warpGoodHttpResponse("SuccessFully")
+		hr := warpGoodHttpResponse("同名合约已存在")
 		ctx.JSON(http.StatusOK, hr)
+		return
 	}
+
+	// 封装为交易发送至主节点，经共识后真正部署
+	go sendNewContract(postC)
+	hr := warpGoodHttpResponse(common.Success)
+	ctx.JSON(http.StatusOK, hr)
 }
 
 //将部署封装为交易发送至主节点
@@ -266,7 +281,7 @@ func postEvent(ctx *gin.Context) {
 		To:      "",
 	}
 	network.TCPSend(msg, common.NodeTable["N0"])
-	hr := warpGoodHttpResponse(common.PostTranSuccess)
+	hr := warpGoodHttpResponse(common.Success)
 	ctx.JSON(http.StatusOK, hr)
 }
 
@@ -343,7 +358,7 @@ func postTran(ctx *gin.Context) {
 	//默认N0为主节点，直接把请求信息发送至N0
 	network.TCPSend(msg, common.NodeTable["N0"])
 	//返回提交成功
-	hr := warpGoodHttpResponse(common.PostTranSuccess)
+	hr := warpGoodHttpResponse(common.Success)
 	ctx.JSON(http.StatusOK, hr)
 }
 
