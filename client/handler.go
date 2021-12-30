@@ -12,10 +12,8 @@ import (
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/pbft"
-	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
@@ -48,48 +46,22 @@ func Cors() gin.HandlerFunc {
 	}
 }
 
-//提交智能合约代码
+// 提交智能合约代码
 func postContract(ctx *gin.Context) {
-	// 读取此次提交
 	postC := meta.ContractPost{}
 	_ = ctx.ShouldBind(&postC)
-	//得先获取到合约名
+	// 获取合约名称
 	contractName := postC.Name
-	//先创建合约文件夹
-	if util.FileExists("./smart_contract/contract/" + contractName) {
+	if account.ContainsAddress(contractName) {
 		log.Error("该合约已存在")
 		hr := warpBadHttpResponse("同名合约已存在")
 		ctx.JSON(http.StatusBadRequest, hr)
+		return
 	} else {
-		err := os.Mkdir("./smart_contract/contract/"+contractName, 0777)
-		if err != nil {
-			log.Error(err)
-		}
-		// 创建保存文件
-		destFile, err := os.Create("./smart_contract/contract/" + contractName + "/" + contractName + ".go")
-		if err != nil {
-			log.Error("Create failed: %s\n", err)
-			return
-		}
-		defer destFile.Close()
-		_, _ = destFile.WriteString(postC.Code)
-
-		err, errStr := smart_contract.GoBuildPlugin(contractName)
-		if err != nil {
-			//将文件夹删除
-			err := os.RemoveAll("./smart_contract/contract/" + contractName)
-			if err != nil {
-				log.Error(err)
-			}
-			hr := warpBadHttpResponse(errStr)
-			log.Error(err)
-			ctx.JSON(http.StatusBadRequest, hr)
-		} else {
-			//除了返回发送成功外，需要将此部署封装为交易发送至主节点，经共识后真正部署
-			go sendNewContract(postC)
-			hr := warpGoodHttpResponse("SuccessFully")
-			ctx.JSON(http.StatusOK, hr)
-		}
+		// 封装为交易发送至主节点，经共识后真正部署
+		go sendNewContract(postC)
+		hr := warpGoodHttpResponse("SuccessFully")
+		ctx.JSON(http.StatusOK, hr)
 	}
 }
 
@@ -243,7 +215,7 @@ func getAllTrans(ctx *gin.Context) {
 }
 
 func getAllAccounts(ctx *gin.Context) {
-	var all []meta.Account
+	all := []meta.Account{}
 	for _, address := range account.GetTotalAddress() {
 		account := account.GetAccount(address)
 		// 私钥从 client 本地获取

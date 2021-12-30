@@ -6,6 +6,7 @@ import (
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/client"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
@@ -38,11 +39,13 @@ func main() {
 
 		//初始化
 		initBlockChain(nodeID)
+		global.NodeID = nodeID
 	} else if addr, ok := common.NodeTable[nodeID]; ok {
 		p := pbft.NewPBFT(nodeID, addr)
 		go p.TcpListen() //启动节点
 		//初始化
 		initBlockChain(nodeID)
+		global.NodeID = nodeID
 	} else {
 		log.Fatal("无此节点编号！")
 	}

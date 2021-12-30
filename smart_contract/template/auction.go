@@ -14,8 +14,8 @@ var ended	bool				// 拍卖结束标记
 var bids = map[string]int{}		// 所有竞拍者的出价
 
 func init() {
-	beneficiary = smart_contract.Caller		// 受益人默认为发布合约的人
-	auctionEnd = time.Now().Add(time.Minute * 2)
+	beneficiary = smart_contract.Caller          // 受益人默认为发布合约的人
+	auctionEnd = time.Now().Add(time.Minute * 2) // 合约在发布两分钟后停止出价
 }
 
 func Bid(args map[string]string) (interface{}, error) {
@@ -36,7 +36,7 @@ func Bid(args map[string]string) (interface{}, error) {
 	return nil, nil
 }
 
-func AuctionEnd(args map[string]string) (interface{}, error) {
+func End(args map[string]string) (interface{}, error) {
 	smart_contract.Transfer(smart_contract.Caller, smart_contract.Value)	// AuctionEnd方法不接受转账，退回
 	if auctionEnd.After(time.Now()) {
 		log.Info("拍卖还未结束")
@@ -48,17 +48,18 @@ func AuctionEnd(args map[string]string) (interface{}, error) {
 		return nil, errors.New("重复调用ActionEnd")
 	}
 
-	_, err := smart_contract.Transfer(beneficiary, bids[highestBidder])
-	if err != nil {
-		log.Info("拍卖异常")
-		return nil, errors.New("拍卖异常")
-	}
+	smart_contract.Transfer(beneficiary, bids[highestBidder]) // 最高出价人拍卖成功
 	for bidder, amount := range bids {
 		if bidder == highestBidder {
 			continue
 		}
-		smart_contract.Transfer(bidder, amount)
+		smart_contract.Transfer(bidder, amount)					// 其他人拍卖失败，退回资金
 	}
 	return nil, nil
 }
 
+// 回退函数，当没有方法匹配时执行此方法
+func Fallback(args map[string]string) (interface{}, error) {
+	smart_contract.Transfer(smart_contract.Caller, smart_contract.Value)	// 将转账退回
+	return nil, nil
+}

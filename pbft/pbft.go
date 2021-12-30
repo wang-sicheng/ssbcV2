@@ -3,6 +3,7 @@ package pbft
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/cloudflare/cfssl/log"
 	common2 "github.com/rjkris/go-jellyfish-merkletree/common"
 	"github.com/ssbcV2/account"
@@ -13,9 +14,11 @@ import (
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
+	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"io/ioutil"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -492,6 +495,15 @@ func (p *pbft) execute(tx meta.Transaction) {
 	case meta.Transfer:
 		global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
+		smart_contract.LoadInfo(meta.ContractTask{
+			Caller: tx.From,	// 部署时加载发布人的地址，用于智能合约init
+		})
+
+		err := p.deployContract(tx.Contract, tx.Data.Code)
+		if err != nil {
+			log.Error("节点部署合约出错: ", err)
+			return
+		}
 		newAccount := account.CreateContract(tx.Contract, tx.Data.Code, tx.From)
 		global.ChangedAccounts = append(global.ChangedAccounts, newAccount)
 		//更新事件数据，每个节点都执行
@@ -504,31 +516,19 @@ func (p *pbft) execute(tx meta.Transaction) {
 			global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value))
 			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.Contract, tx.Value))
 		}
-
-		// 目前是单机版本，合约只由N0节点调用
-		if p.node.nodeID == "N0" {
-			// 调用合约
-			//tx.Args["sender"] = tx.From
-			//log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
-			//result, err := smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
-			//if err != nil {
-			//	log.Errorf("调用失败：", err)
-			//}
-			//log.Infof("调用结果：%v\n", result)
-			tx.Args["sender"] = tx.From
-			global.TaskList = append(global.TaskList, meta.ContractTask{
-				tx.From,
-				tx.Value,
-				tx.Contract,
-				tx.Method,
-				tx.Args,
-			})
-			for len(global.TaskList) !=0 {
-				err := event.HandleContractTask()
-				if err != nil {
-					log.Errorf("contract task handle error: %s", err)
-					continue
-				}
+		// 每个节点都会去执行智能合约，需要确保智能合约执行的确定性（暂时没有做合约执行后的共识）
+		global.TaskList = append(global.TaskList, meta.ContractTask{
+			tx.From,
+			tx.Value,
+			tx.Contract,
+			tx.Method,
+			tx.Args,
+		})
+		for len(global.TaskList) != 0 {
+			err := event.HandleContractTask()
+			if err != nil {
+				log.Errorf("contract task handle error: %s", err)
+				continue
 			}
 		}
 	default:
@@ -607,4 +607,36 @@ func (p *pbft) getPivKey(nodeID string) []byte {
 		log.Error(err)
 	}
 	return key
+}
+
+func (p *pbft) deployContract(name, code string) error {
+	dir := "./smart_contract/contract/" + p.node.nodeID + "/" + name + "/"
+	if util.FileExists(dir) {
+		log.Error("该合约已存在")
+		return errors.New("该合约已存在")
+	} else {
+		err := os.MkdirAll(dir, 0777)
+		if err != nil {
+			log.Error(err)
+		}
+		// 创建保存文件
+		destFile, err := os.Create(dir + name + ".go")
+		if err != nil {
+			log.Error("Create failed: %s\n", err)
+			return err
+		}
+		defer destFile.Close()
+		_, _ = destFile.WriteString(code)
+
+		err, _ = smart_contract.GoBuildPlugin(name)
+		if err != nil {
+			//将文件夹删除
+			err := os.RemoveAll(dir)
+			if err != nil {
+				log.Error(err)
+			}
+			return err
+		}
+	}
+	return nil
 }

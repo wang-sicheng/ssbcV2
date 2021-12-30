@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/global"
 	"os/exec"
 	"plugin"
 )
@@ -39,7 +40,7 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 
 	// 执行编译命令
 	cmd := exec.Command("go", "build", "-buildmode=plugin", contractName + ".go")
-	cmd.Dir = "./smart_contract/contract/" + contractName
+	cmd.Dir = "./smart_contract/contract/" + global.NodeID + "/" + contractName
 	cmd.Stderr = &output
 	err = cmd.Run()
 	if err != nil {
@@ -59,13 +60,23 @@ func CallContract(name string, method string, args map[string]string) (interface
 		return nil, errors.New("invalid call params")
 	}
 
-	p, err := plugin.Open("./smart_contract/contract/" + name + "/" + name + ".so")
+	dir := "./smart_contract/contract/" + global.NodeID + "/" + name + "/"
+	log.Info("call contract: " + dir)
+	p, err := plugin.Open(dir + name + ".so")
 	if err != nil {
 		return nil, err
 	}
 	f, err := p.Lookup(method)
 	if err != nil {
-		return nil, err
+		log.Infof("找不到目标方法：%v，执行FallBack方法", method)
+		f, err := p.Lookup("Fallback")
+		if err != nil {
+			log.Info("没有提供Fallback方法")
+			return nil, err
+		}
+		a, _ := f.(func(map[string]string) (interface{}, error))(args)
+		log.Infof("执行结果：%v\n", a)
+		return a, nil
 	}
 
 	a, _ := f.(func(map[string]string) (interface{}, error))(args)
