@@ -10,6 +10,7 @@ import (
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
+	"github.com/ssbcV2/redis"
 	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 )
@@ -78,7 +79,7 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 	return trans, nil
 }
 
-// 执行智能合约，并将事件触发的智能合约放入队列
+// 执行智能合约，并将事件触发的智能合约放入队列，更新事件
 // todo：将智能合约的执行结果更新到accounts
 func HandleContractTask() error {
 	task := global.TaskList[0]
@@ -94,6 +95,7 @@ func HandleContractTask() error {
 	if !ok {
 		log.Error("contract update data decode error")
 	}
+	// 处理事件消息
 	for _, msg := range data.Messages {
 		e, ok := EventData[msg.EventID]
 		if !ok {
@@ -125,15 +127,22 @@ func HandleContractTask() error {
 			})
 		}
 	}
+
+	// 处理事件和订阅信息
+	eList, err := UpdateEventData(data, smart_contract.Caller)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	global.TreeData = append(global.TreeData, eList...)
 	return nil
 }
 
 // 生成事件和订阅数据（暂时不考虑更新），在部署合约时使用
 // address:合约地址，from:部署合约的外部账户地址
 // 暂时不考虑订阅当前智能合约
-func UpdateEventData(name string, address string, from string) ([]meta.JFTreeData, error) {
+func ExecuteInitEvent(name string, address string, from string) ([]meta.JFTreeData, error) {
 	var args map[string]string
-	var treeDataList []meta.JFTreeData
 	res, err := smart_contract.CallContract(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
 	if err != nil {
 		log.Errorf("initEvent run error: %s", err)
@@ -143,6 +152,17 @@ func UpdateEventData(name string, address string, from string) ([]meta.JFTreeDat
 	if !ok {
 		return nil, errors.New("contract update data decode error")
 	}
+	dataList, err := UpdateEventData(data, from)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return dataList, err
+}
+
+// 生成事件和订阅数据
+func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeData, error) {
+	var treeDataList []meta.JFTreeData
 	events := data.Events
 	subs := data.EventSubs
 	if !account.ContainsAddress(from) {
@@ -158,6 +178,7 @@ func UpdateEventData(name string, address string, from string) ([]meta.JFTreeDat
 		events[index].FromAddress = from
 		EventData[events[index].EventID] = events[index] // 先更新到内存中，最后统一落库
 		treeDataList = append(treeDataList, events[index])
+		_ = pushEventToRedis(events[index])
 	}
 	// 生成新的订阅
 	for index, s := range subs {
@@ -179,4 +200,64 @@ func UpdateEventData(name string, address string, from string) ([]meta.JFTreeDat
 	UpdateToLevelDB(EventData)
 	return treeDataList, nil
 }
+
+// 输出到redis消息队列用于预言机监听
+func pushEventToRedis(event meta.Event) error {
+	eventBytes, _ := json.Marshal(event)
+	err := redis.PushToList(common.RedisEventKey, string(eventBytes))
+	if err != nil {
+		return err
+	}
+	log.Infof("event is pushed into list: %+v", event)
+	return nil
+}
+
+//func UpdateEventData(name string, address string, from string) ([]meta.JFTreeData, error) {
+//	var args map[string]string
+//	var treeDataList []meta.JFTreeData
+//	res, err := smart_contract.CallContract(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
+//	if err != nil {
+//		log.Errorf("initEvent run error: %s", err)
+//		return nil, err
+//	}
+//	data, ok := res.(meta.ContractUpdateData)
+//	if !ok {
+//		return nil, errors.New("contract update data decode error")
+//	}
+//	events := data.Events
+//	subs := data.EventSubs
+//	if !account.ContainsAddress(from) {
+//		return nil, errors.New("from address is not exist in db: " + from)
+//	}
+//	ac := account.GetAccount(from)
+//	curSeq := ac.Seq
+//	// 生成新的event
+//	for index, _ := range events {
+//		curSeq ++
+//		eventHash, _ := util.CalculateHash([]byte(from+string(curSeq))) // 外部账户地址和seq唯一决定一个事件
+//		events[index].EventID = hex.EncodeToString(eventHash)
+//		events[index].FromAddress = from
+//		EventData[events[index].EventID] = events[index] // 先更新到内存中，最后统一落库
+//		treeDataList = append(treeDataList, events[index])
+//	}
+//	// 生成新的订阅
+//	for index, s := range subs {
+//		eid := s.EventID
+//		if !IsContainsKey(eid) { // 要订阅的事件不存在
+//			log.Errorf("the event to sub is not exist: %s", eid)
+//			continue
+//		}
+//		curSeq ++
+//		subHash, _ := util.CalculateHash([]byte(from+string(curSeq)))
+//		subs[index].SubID = hex.EncodeToString(subHash)
+//		subs[index].FromAddress = from
+//		edata, _ := EventData[eid].(meta.Event)
+//		edata.Subscriptions = append(edata.Subscriptions, subs[index].SubID) // 更新事件的订阅信息
+//
+//		EventData[subs[index].SubID] = subs[index]
+//		treeDataList = append(treeDataList, subs[index])
+//	}
+//	UpdateToLevelDB(EventData)
+//	return treeDataList, nil
+//}
 

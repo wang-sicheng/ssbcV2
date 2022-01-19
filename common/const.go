@@ -36,6 +36,7 @@ const AbstractHeadersKey = "abstractHeaders"
 const AbstractHeadersFinalKey = "abstractHeadersFinal"
 const RegisterInformationKey = "register_information"
 const RemoteHeadersKey = "remote_headers_key"
+const RedisEventKey = "event"
 
 //客户端命令
 const TXOrder = "tx"

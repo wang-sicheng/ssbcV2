@@ -10,6 +10,7 @@ type JFTreeData interface {
 }
 
 type Event struct {
+	Type string // 0:日志记录;1:api;2:跨链;3:事件外传
 	EventID     string
 	Args        map[string]string
 	FromAddress string // 事件定义方
