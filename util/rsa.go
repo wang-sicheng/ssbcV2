@@ -109,7 +109,6 @@ func GetKeyPair() (prvkey, pubkey []byte) {
 	return
 }
 
-
 func main() {
 
 	//生成私钥
@@ -190,7 +189,7 @@ func GenRsaKeys() {
 		if err != nil {
 			log.Error()
 		}
-		for i := 0; i <= 4; i++ {
+		for i := 0; i <= 7; i++ {
 			if !FileExists("./Keys/N" + strconv.Itoa(i)) {
 				err := os.Mkdir("./Keys/N"+strconv.Itoa(i), 0777)
 				if err != nil {

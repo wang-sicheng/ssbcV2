@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/cloudflare/cfssl/log"
 	"github.com/gin-gonic/gin"
-	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/global"
 )
 
 // 监听用户请求
@@ -25,7 +25,7 @@ func ListenRequest() {
 	//注册账户
 	r.GET("/registerAccount", registerAccount)
 	//提交一笔跨链交易
-	//http.HandleFunc("/postCrossTran", server.postCrossTran)
+	r.POST("/postCrossTran", postCrossTran)
 	//提交智能合约
 	r.POST("/postContract", postContract)
 	//提供链上query服务--既能服务于普通节点也能服务于智能合约
@@ -33,7 +33,7 @@ func ListenRequest() {
 	//r.POST("/decrypt",decrypt)
 	// 发起事件
 	r.POST("/postEvent", postEvent)
-	r.Run(common.ClientToUserAddr)
+	r.Run(global.ClientToUserAddr)
 
 	log.Info(" ---------------------------------------------------------------------------------")
 	log.Info("|  已启动PBFT客户端，请启动全部节点后再发送消息！  |")
