@@ -22,12 +22,20 @@ func main() {
 
 	if len(os.Args) != 2 {
 		log.Error("输入的参数有误！")
+		return
 	}
 	nodeID := os.Args[1]
+
+	// 删除 levelDB/path 和 smart_contract/contract 目录
+	if nodeID == "clear" {
+		clear()
+		return
+	}
 
 	// 不存在该节点编号
 	if !util.Contains(common.Ssbc1Nodes, nodeID) &&
 		!util.Contains(common.Ssbc2Nodes, nodeID) {
+		log.Info("无此节点编号！")
 		return
 	}
 
@@ -116,4 +124,11 @@ func initBlockChain(ID string) {
 		log.Info("发送区块链同步消息,msg:", msg, "addr:", global.NodeTable[global.Master])
 		util.TCPSend(msg, global.NodeTable[global.Master])
 	}
+}
+
+// 清空数据
+func clear() {
+	os.RemoveAll("./levelDB/db/path/")
+	os.RemoveAll("./smart_contract/contract/")
+	log.Info("成功删除数据!")
 }
