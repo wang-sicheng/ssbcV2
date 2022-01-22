@@ -120,7 +120,7 @@ func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 	}
 
 	// 只有client节点处理这个case
-	if msg.Type == common.PBFTReply && p.node.nodeID == "client" {
+	if msg.Type == common.PBFTReply && p.node.nodeID == global.Client {
 		bcs := chain.GetCurrentBlockChain()
 		newBC := new(meta.Block)
 		bc := msg.Content
@@ -192,8 +192,6 @@ func (p *pbft) handleClientRequest(content []byte) {
 		transList = append(transList, trans)
 	}
 
-
-
 	//step3：主节点对交易进行验签，验签不通过的丢弃
 	//if !RsaVerySignWithSha256(trans.Hash,trans.Sign,[]byte(trans.PublicKey)){
 	//	log.Error("[handleClientRequest] 验签失败!!")
@@ -263,7 +261,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		log.Error(err)
 	}
 	//获取主节点的公钥，用于数字签名验证
-	primaryNodePubKey := p.getPubKey("N0")
+	primaryNodePubKey := p.getPubKey(global.Master)
 	digestByte, _ := hex.DecodeString(pp.Digest)
 	//首先检查所有的交易客户端签名（防止主节点作恶）
 	//step1先获取到全部的交易
@@ -351,7 +349,7 @@ func (p *pbft) handlePrepare(content []byte) {
 		}
 		//因为主节点不会发送Prepare，所以不包含自己
 		specifiedCount := 0
-		if p.node.nodeID == "N0" {
+		if p.node.nodeID == global.Master {
 			specifiedCount = common.NodeCount / 3 * 2
 		} else {
 			specifiedCount = (common.NodeCount / 3 * 2) - 1
@@ -365,7 +363,7 @@ func (p *pbft) handlePrepare(content []byte) {
 			//*******************************************************************
 
 			//待注释--测试专用（节点作恶：即使全部验证通过也拒绝广播）
-			//if p.node.nodeID=="N0"{
+			//if p.node.nodeID==common.Master{
 			//	log.Info("主节点作恶：全部验证通过，但是拒绝广播")
 			//	p.lock.Unlock()
 			//	return
@@ -449,7 +447,7 @@ func (p *pbft) handleCommit(content []byte) {
 				Type:    common.PBFTReply,
 				Content: []byte(newBCMsg),
 			}
-			network.TCPSend(tcpMsg, p.messagePool[c.Digest].ClientAddr)
+			util.TCPSend(tcpMsg, global.ClientToNodeAddr)
 			p.isReply[c.Digest] = true
 			log.Info("reply完毕")
 		}
@@ -474,7 +472,7 @@ func (p *pbft) refreshState(b *meta.Block, height int) {
 	if len(global.ChangedAccounts) != 0 {
 		stateRootHash, _ = merkle.UpdateStateTree(global.ChangedAccounts, uint64(height), merkle.AccountStatePath)
 	} else { // 需要更新的账户为空时，更新初始账户
-		stateRootHash, _ = merkle.UpdateStateTree([]meta.JFTreeData{merkle.InitAccount},uint64(height), merkle.AccountStatePath)
+		stateRootHash, _ = merkle.UpdateStateTree([]meta.JFTreeData{merkle.InitAccount}, uint64(height), merkle.AccountStatePath)
 	}
 	b.StateRoot = stateRootHash.Bytes()
 	if len(global.TreeData) != 0 {
@@ -484,8 +482,8 @@ func (p *pbft) refreshState(b *meta.Block, height int) {
 	}
 	b.EventRoot = eventRootHash.Bytes()
 
-	global.ChangedAccounts = []meta.JFTreeData{}	// 本轮区块d的状态修改已持久化，清空列表
-	global.TreeData = []meta.JFTreeData{}		// 本轮区块的event，sub已持久化，清空列表
+	global.ChangedAccounts = []meta.JFTreeData{} // 本轮区块d的状态修改已持久化，清空列表
+	global.TreeData = []meta.JFTreeData{}        // 本轮区块的event，sub已持久化，清空列表
 }
 
 func (p *pbft) execute(tx meta.Transaction) {
@@ -496,7 +494,7 @@ func (p *pbft) execute(tx meta.Transaction) {
 		global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
 		smart_contract.LoadInfo(meta.ContractTask{
-			Caller: tx.From,	// 部署时加载发布人的地址，用于智能合约init
+			Caller: tx.From, // 部署时加载发布人的地址，用于智能合约init
 		})
 
 		err := p.deployContract(tx.Contract, tx.Data.Code)
@@ -531,6 +529,21 @@ func (p *pbft) execute(tx meta.Transaction) {
 				continue
 			}
 		}
+	case meta.CrossTransfer:
+		if global.ChainID == tx.SourceChainId {
+			global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value))
+
+			// 由client节点向目标链client发送交易和proof
+			if p.node.nodeID == global.Client {
+				postCT2Dest(tx)
+			}
+
+		} else if global.ChainID == tx.DestChainId {
+			// todo: 校验proof
+			//proof := tx.Proof
+			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.To, tx.Value))
+		}
+
 	default:
 		log.Infof("未知的交易类型")
 	}
@@ -551,11 +564,57 @@ func checkTran(tx meta.Transaction) bool {
 		// 判断合约能否部署（并没有真正部署）
 	case meta.Invoke:
 		// 判断合约能否调用（并没有真正调用）
+	case meta.CrossTransfer:
+		// 判断能否跨链转账
 	default:
 		log.Infof("未知的交易类型")
 		return false
 	}
 	return true
+}
+
+// 向目标链client发送转账交易
+func postCT2Dest(ct meta.Transaction) {
+	cBcs := chain.GetCurrentBlockChain()
+	height := len(cBcs) - 1
+	// 获取到区块中所有的交易
+	txs := cBcs[height].TX
+	// 生成该交易的merkle proof
+	tranHash, merklePath, merkleIndex := merkle.GetTranMerklePath(txs, 0) // 交易index都是0，因为目前每个区块只有一个交易
+	proof := meta.CrossTranProof{
+		MerklePath:  merklePath,
+		TransHash:   tranHash,
+		Height:      height,
+		MerkleIndex: merkleIndex,
+	}
+	ct.Proof = proof
+
+	r := new(Request)
+	r.Timestamp = time.Now().UnixNano()
+	r.ClientAddr = global.ClientToNodeAddr
+	r.Message.ID = util.GetRandom()
+	r.Type = 0
+
+	tb, _ := json.Marshal(ct)
+	r.Message.Content = string(tb)
+	br, err := json.Marshal(r)
+	if err != nil {
+		log.Error(err)
+	}
+	//log.Info(string(br))
+	msg := meta.TCPMessage{
+		Type:    common.PBFTRequest,
+		Content: br,
+	}
+	var targetAddress string
+	if global.ChainID == common.ChainId1 {
+		targetAddress = common.NodeTable2["N4"]
+	}
+	if global.ChainID == common.ChainId2 {
+		targetAddress = common.NodeTable1["N0"]
+	}
+	log.Infof("target: %v", targetAddress)
+	util.TCPSend(msg, targetAddress)
 }
 
 //序号累加
@@ -567,11 +626,11 @@ func (p *pbft) sequenceIDAdd() {
 
 //向除自己外的其他节点进行广播
 func (p *pbft) broadcast(msg meta.TCPMessage) {
-	for i := range common.NodeTable {
+	for i := range global.NodeTable {
 		if i == p.node.nodeID {
 			continue
 		}
-		go network.TCPSend(msg, common.NodeTable[i])
+		go util.TCPSend(msg, global.NodeTable[i])
 	}
 }
 

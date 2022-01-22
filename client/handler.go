@@ -8,9 +8,9 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
-	"github.com/ssbcV2/network"
 	"github.com/ssbcV2/pbft"
 	"github.com/ssbcV2/util"
 	"net/http"
@@ -108,7 +108,7 @@ func sendNewContract(c meta.ContractPost) {
 	//客户端需要把交易信息发送给主节点
 	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = common.ClientToNodeAddr
+	r.ClientAddr = global.ClientToNodeAddr
 	r.Message.ID = util.GetRandom()
 	r.Type = 0
 	tb, _ := json.Marshal(t)
@@ -123,7 +123,7 @@ func sendNewContract(c meta.ContractPost) {
 		Content: br,
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
-	network.TCPSend(msg, common.NodeTable["N0"])
+	util.TCPSend(msg, global.NodeTable[global.Master])
 }
 
 //账户注册
@@ -174,7 +174,7 @@ func registerAccount(ctx *gin.Context) {
 	//客户端需要把交易信息发送给主节点
 	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = common.ClientToNodeAddr
+	r.ClientAddr = global.ClientToNodeAddr
 	r.Message.ID = util.GetRandom()
 	r.Type = 0
 
@@ -190,7 +190,7 @@ func registerAccount(ctx *gin.Context) {
 		Content: br,
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
-	network.TCPSend(msg, common.NodeTable["N0"])
+	util.TCPSend(msg, global.NodeTable[global.Master])
 	//返回提交成功
 	hr := warpGoodHttpResponse(res)
 	ctx.JSON(http.StatusOK, hr)
@@ -262,12 +262,12 @@ func postEvent(ctx *gin.Context) {
 		Sign:      nil, // TODO:增加签名
 		PublicKey: params.PublicKey,
 		TimeStamp: "",
-		Hash: nil,
+		Hash:      nil,
 	}
 	req := pbft.Request{
 		Message:    pbft.Message{},
 		Timestamp:  time.Now().UnixNano(),
-		ClientAddr: common.ClientToNodeAddr,
+		ClientAddr: global.ClientToNodeAddr,
 	}
 	emBytes, _ := json.Marshal(em)
 	req.Message.Content = string(emBytes)
@@ -280,7 +280,7 @@ func postEvent(ctx *gin.Context) {
 		From:    "",
 		To:      "",
 	}
-	network.TCPSend(msg, common.NodeTable["N0"])
+	util.TCPSend(msg, global.NodeTable[global.Master])
 	hr := warpGoodHttpResponse(common.Success)
 	ctx.JSON(http.StatusOK, hr)
 }
@@ -340,7 +340,7 @@ func postTran(ctx *gin.Context) {
 	//客户端需要把交易信息发送给主节点
 	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = common.ClientToNodeAddr
+	r.ClientAddr = global.ClientToNodeAddr
 	r.Message.ID = util.GetRandom()
 	r.Type = 0
 
@@ -356,25 +356,11 @@ func postTran(ctx *gin.Context) {
 		Content: br,
 	}
 	//默认N0为主节点，直接把请求信息发送至N0
-	network.TCPSend(msg, common.NodeTable["N0"])
+	util.TCPSend(msg, global.NodeTable[global.Master])
 	//返回提交成功
 	hr := warpGoodHttpResponse(common.Success)
 	ctx.JSON(http.StatusOK, hr)
 }
-
-//func decrypt (ctx *gin.Context){
-//	type Decrypt struct {
-//		PublicKey string
-//		CipherText string
-//	}
-//
-//	d:=Decrypt{}
-//	_:=ctx.ShouldBind(&d)
-//
-//	util.RSADecrypt([]byte(d.CipherText),[]byte(d.PublicKey))
-//
-//
-//}
 
 //用户查询当前所有区块-->获取当前的区块链
 func getBlockChain(ctx *gin.Context) {
@@ -423,6 +409,66 @@ func getBlockTrans(ctx *gin.Context) {
 		hr := warpGoodHttpResponse(trans)
 		ctx.JSON(http.StatusOK, hr)
 	}
+}
+
+func postCrossTran(ctx *gin.Context) {
+	b, _ := ctx.GetRawData()
+	log.Infof("[client] 收到跨链交易: %s\n", string(b))
+
+	pt := meta.PostCrossTran{}
+	//err := ctx.ShouldBind(&pt)
+	err := json.Unmarshal(b, &pt)
+	//err := ctx.BindJSON(&pt)
+	if err != nil {
+		log.Error("[postTran],json decode err:", err)
+	}
+
+	// 检查交易参数
+	if msg, ok := checkCrossTranParameters(&pt); !ok {
+		hr := warpGoodHttpResponse(msg)
+		log.Infof(msg + "\n")
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
+
+	t := meta.Transaction{
+		SourceChainId: pt.SourceChain,
+		DestChainId:   pt.DestChain,
+		From:          pt.From,
+		To:            pt.To,
+		Value:         pt.Value,
+		Timestamp:     "",
+		PublicKey:     pt.PublicKey,
+		Type:          meta.CrossTransfer,
+	}
+	//客户端在转发交易之前需要对交易进行签名
+	//先将交易进行hash
+	//tByte, _ := json.Marshal(t)
+	//t.Hash, _ = util.CalculateHash(tByte)
+	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
+	//客户端需要把交易信息发送给主节点
+	r := new(pbft.Request)
+	r.Timestamp = time.Now().UnixNano()
+	r.ClientAddr = global.ClientToNodeAddr
+	r.Message.ID = util.GetRandom()
+	r.Type = 0
+
+	tb, _ := json.Marshal(t)
+	r.Message.Content = string(tb)
+	br, err := json.Marshal(r)
+	if err != nil {
+		log.Error(err)
+	}
+	//log.Info(string(br))
+	msg := meta.TCPMessage{
+		Type:    common.PBFTRequest,
+		Content: br,
+	}
+	//默认N0为主节点，直接把请求信息发送至N0
+	util.TCPSend(msg, global.NodeTable[global.Master])
+	//返回提交成功
+	hr := warpGoodHttpResponse(common.Success)
+	ctx.JSON(http.StatusOK, hr)
 }
 
 func warpGoodHttpResponse(data interface{}) meta.HttpResponse {
@@ -488,4 +534,40 @@ func checkTranParameters(pt *meta.PostTran) (string, bool) {
 	return "", true
 }
 
+// 检查跨链交易参数
+func checkCrossTranParameters(pt *meta.PostCrossTran) (string, bool) {
+	if pt.From == "" {
+		return "发起地址不能为空", false
+	}
 
+	if pt.From == pt.To {
+		return "发起地址和接收地址不能相同", false
+	}
+
+	if pt.PublicKey == "" {
+		return "公钥不能为空", false
+	}
+
+	// 调用合约
+	if pt.Contract != "" {
+		if pt.Method == "" {
+			return "方法不能为空", false
+		}
+		return "", true
+	}
+
+	// 转账交易
+	if pt.Value <= 0 {
+		return "转账金额必须为正整数", false
+	}
+
+	// 确保发起地址已存在，接收地址本链无法确定
+	if !account.ContainsAddress(pt.From) {
+		return "发起地址不存在", false
+	}
+
+	if len(pt.To) == 0 {
+		return "接收地址不能为空", false
+	}
+	return "", true
+}

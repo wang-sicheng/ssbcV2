@@ -9,23 +9,6 @@ type AbstractBlockHeader struct {
 	MerkleRoot []byte
 }
 
-//跨链交易
-type CrossTran struct {
-	SourceChainId   string //源链链名
-	DestChainId     string //目标链链名
-	TimeStamp       string
-	TimeOut         string //超时设置
-	UserCertificate []byte //交易发起用户证书
-	TransId         []byte //交易Id
-	Type            string //交易类型
-	Status          string //交易状态
-	From            string //源账户
-	To              string //目标账户
-	Value           int
-	Param           CrossTranParam
-	Proof           CrossTranProof
-}
-
 //跨链回执
 type CrossTranReceipt struct {
 	SourceChainId   string //源链链名
@@ -34,7 +17,7 @@ type CrossTranReceipt struct {
 	TimeOut         string        //超时设置
 	UserCertificate []byte        //交易发起用户证书
 	TransId         []byte        //交易Id
-	Type            string        //交易类型
+	Type            int           //交易类型
 	Status          string        //交易状态
 	Resp            CrossTranResp //回执
 	Proof           CrossTranProof

@@ -24,6 +24,13 @@ func main() {
 		log.Error("输入的参数有误！")
 	}
 	nodeID := os.Args[1]
+
+	// 不存在该节点编号
+	if !util.Contains(common.Ssbc1Nodes, nodeID) &&
+		!util.Contains(common.Ssbc2Nodes, nodeID) {
+		return
+	}
+
 	merkle.AccountStatePath = "./levelDB/db/path/account/" + nodeID // 账户状态和事件状态分开存储
 	merkle.EventStatePath = "./levelDB/db/path/event/" + nodeID
 	// 数据库连接
@@ -32,23 +39,46 @@ func main() {
 	// 从levelDB读取账户信息（必须在数据库建立连接后，所以不能在init()完成）
 	account.GetFromDisk()
 
-	if nodeID == "client" {
-		go client.ListenRequest() 	// 启动客户端程序
-		p := pbft.NewPBFT(nodeID, common.ClientToNodeAddr)
-		go p.TcpListen()
+	if util.Contains(common.Ssbc1Nodes, nodeID) {
+		global.ChainID = "ssbc1"
+		global.Master = "N0"
+		global.Client = "client1"
+		global.NodeTable = common.NodeTable1
+		global.ClientToNodeAddr = common.Client1ToNodeAddr
+		global.ClientToUserAddr = common.Client1ToUserAddr
 
-		//初始化
-		initBlockChain(nodeID)
-		global.NodeID = nodeID
-	} else if addr, ok := common.NodeTable[nodeID]; ok {
-		p := pbft.NewPBFT(nodeID, addr)
-		go p.TcpListen() //启动节点
-		//初始化
-		initBlockChain(nodeID)
-		global.NodeID = nodeID
-	} else {
-		log.Fatal("无此节点编号！")
+		if nodeID == "client1" {
+			go client.ListenRequest() // 启动客户端程序
+			p := pbft.NewPBFT(nodeID, common.Client1ToNodeAddr)
+			go p.TcpListen()
+		} else if addr, ok := common.NodeTable1[nodeID]; ok {
+			p := pbft.NewPBFT(nodeID, addr)
+			go p.TcpListen() //启动节点
+		}
 	}
+
+	if util.Contains(common.Ssbc2Nodes, nodeID) {
+		global.ChainID = "ssbc2"
+		global.Master = "N4"
+		global.Client = "client2"
+		global.NodeTable = common.NodeTable2
+		global.ClientToNodeAddr = common.Client2ToNodeAddr
+		global.ClientToUserAddr = common.Client2ToUserAddr
+
+		if nodeID == "client2" {
+			go client.ListenRequest() // 启动客户端程序
+			p := pbft.NewPBFT(nodeID, common.Client2ToNodeAddr)
+			go p.TcpListen()
+		} else if addr, ok := common.NodeTable2[nodeID]; ok {
+			p := pbft.NewPBFT(nodeID, addr)
+			go p.TcpListen() //启动节点
+		}
+	}
+
+	// 初始化
+	initBlockChain(nodeID)
+	global.NodeID = nodeID
+
 	select {}
 }
 
@@ -67,7 +97,7 @@ func initBlockChain(ID string) {
 		events = append(events, merkle.InitEvent)
 		stateRootHash, _ := merkle.UpdateStateTree(accounts, 0, merkle.AccountStatePath)
 		eventRootHash, _ := merkle.UpdateStateTree(events, 0, merkle.EventStatePath)
-		if ID == "N0" {
+		if ID == global.Master {
 			gb := chain.GenerateGenesisBlock()
 			gb.StateRoot = stateRootHash.Bytes()
 			gb.EventRoot = eventRootHash.Bytes()
@@ -75,7 +105,7 @@ func initBlockChain(ID string) {
 			chain.StoreBlockChain(chain.BlockChain)
 		}
 	}
-	if ID == "N0" {
+	if ID == global.Master {
 		if len(bc) != 0 {
 			chain.BlockChain = bc
 		}
@@ -83,7 +113,7 @@ func initBlockChain(ID string) {
 		//非主节点初始化时需要和主节点进行区块信息同步
 		//先生成区块链同步请求消息，再发送
 		msg := network.GenBlockSynReqMsg(ID)
-		log.Info("发送区块链同步消息,msg:", msg, "addr:", common.NodeTable["N0"])
-		network.TCPSend(msg, common.NodeTable["N0"])
+		log.Info("发送区块链同步消息,msg:", msg, "addr:", global.NodeTable[global.Master])
+		util.TCPSend(msg, global.NodeTable[global.Master])
 	}
 }

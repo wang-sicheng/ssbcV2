@@ -54,7 +54,7 @@ const EvilCount = 1
 const ProposalSignCount = 1
 const VRFThreshold = 1
 
-const LocalChainId = "ssbc"
-const LocalChainId2 = "ssbc2"
+const ChainId1 = "ssbc1"
+const ChainId2 = "ssbc2"
 
 const Success = "Success" // 必须与前端消息相同
