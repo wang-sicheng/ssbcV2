@@ -54,7 +54,7 @@ func postContract(ctx *gin.Context) {
 	from := postC.Account
 	if !account.ContainsAddress(from) {
 		log.Error("发起地址不存在")
-		hr := warpGoodHttpResponse("发起地址不存在")
+		hr := errResponse("发起地址不存在")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
@@ -63,20 +63,20 @@ func postContract(ctx *gin.Context) {
 	contractName := postC.Name
 	if contractName == "" {
 		log.Error("合约名称不能为空")
-		hr := warpGoodHttpResponse("合约名称不能为空")
+		hr := errResponse("合约名称不能为空")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
 	if account.ContainsAddress(contractName) {
 		log.Error("该合约已存在")
-		hr := warpGoodHttpResponse("同名合约已存在")
+		hr := errResponse("同名合约已存在")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
 
 	// 封装为交易发送至主节点，经共识后真正部署
 	go sendNewContract(postC)
-	hr := warpGoodHttpResponse(common.Success)
+	hr := goodResponse("")
 	ctx.JSON(http.StatusOK, hr)
 }
 
@@ -192,53 +192,77 @@ func registerAccount(ctx *gin.Context) {
 	//默认N0为主节点，直接把请求信息发送至N0
 	util.TCPSend(msg, global.NodeTable[global.Master])
 	//返回提交成功
-	hr := warpGoodHttpResponse(res)
+	hr := goodResponse(res)
 	ctx.JSON(http.StatusOK, hr)
 }
 
 //链上信息query服务
 func query(ctx *gin.Context) {
-	//测试用，之后需要删掉(库也需要删)
-	tests := make([]meta.AbstractBlockHeader, 0)
-	test := meta.AbstractBlockHeader{
-		ChainId:    "ssbc2",
-		Height:     0,
-		Hash:       []byte("hello"),
-		PreHash:    []byte("hello"),
-		MerkleRoot: []byte("hello"),
+	data, _ := ctx.GetRawData()
+	log.Infof("[client] 收到查询请求: %s\n", string(data))
+
+	q := meta.Query{}
+	err := json.Unmarshal(data, &q)
+	if err != nil {
+		log.Error("[query],json decode err:", err)
 	}
-	tests = append(tests, test)
-	tests = append(tests, test)
-	testKey := "abstract_block_header_store_key_ssbc2"
-	testsByte, _ := json.Marshal(tests)
-	levelDB.DBPut(testKey, testsByte)
 
-	//获取到查询参数
-	queryKey := ctx.Query("queryKey")
-	//根据查询key去库中查询数据
-	val := levelDB.DBGet(queryKey)
-	log.Info("链上数据服务查询结果:", string(val))
-	hr := warpGoodHttpResponse(val)
-	ctx.JSON(http.StatusOK, hr)
-}
+	var response meta.HttpResponse
+	switch q.Type {
+	case "getBlockChain":	// 获取区块链
+		bcs := chain.GetCurrentBlockChain()
+		response = goodResponse(bcs)
 
-//获取全部的交易
-func getAllTrans(ctx *gin.Context) {
-	all := chain.GetAllTransactions()
-	hr := warpGoodHttpResponse(all)
-	ctx.JSON(http.StatusOK, hr)
-}
+	case "getBlock":		// 获取指定高度的区块
+		height := q.Parameters[0]
+		hInt64, err := strconv.ParseInt(height, 10, 64)
+		if err != nil {
+			log.Error("[getBlock],parseInt err:", err)
+			panic(err)
+		}
+		hInt := int(hInt64)
+		bc := chain.GetBlock(hInt)
+		if bc == nil {
+			response = errResponse("Invalid param")
+		} else {
+			response = goodResponse(bc)
+		}
 
-func getAllAccounts(ctx *gin.Context) {
-	all := []meta.Account{}
-	for _, address := range account.GetTotalAddress() {
-		account := account.GetAccount(address)
-		// 私钥从 client 本地获取
-		account.PrivateKey = string(levelDB.DBGet(address + common.AccountsPrivateKeySuffix))
-		all = append(all, account)
+	case "getAllTxs":		// 获取所有的交易
+		all := chain.GetAllTransactions()
+		response = goodResponse(all)
+
+	case "getAllAccounts":	// 获取所有的账户
+		all := []meta.Account{}
+		for _, address := range account.GetTotalAddress() {
+			account := account.GetAccount(address)
+			// 私钥从 client 本地获取
+			account.PrivateKey = string(levelDB.DBGet(address + common.AccountsPrivateKeySuffix))
+			all = append(all, account)
+		}
+		response = goodResponse(all)
+
+	case "getOneBlockTxs":	// 获取指定高度的区块的所有交易
+		h := ctx.Query("height")
+		hInt64, err := strconv.ParseInt(h, 10, 64)
+		if err != nil {
+			log.Error("[getBlock],parseInt err:", err)
+			panic(err)
+		}
+		hInt := int(hInt64)
+		bc := chain.GetBlock(hInt)
+		if bc == nil {
+			response = errResponse("Invalid param")
+		} else {
+			trans := bc.TX
+			response = goodResponse(trans)
+		}
+	default:
+		log.Info("Query参数有误!")
+		response = errResponse("Query参数有误!")
 	}
-	hr := warpGoodHttpResponse(all)
-	ctx.JSON(http.StatusOK, hr)
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 func postEvent(ctx *gin.Context) {
@@ -281,7 +305,7 @@ func postEvent(ctx *gin.Context) {
 		To:      "",
 	}
 	util.TCPSend(msg, global.NodeTable[global.Master])
-	hr := warpGoodHttpResponse(common.Success)
+	hr := goodResponse("")
 	ctx.JSON(http.StatusOK, hr)
 }
 
@@ -300,7 +324,7 @@ func postTran(ctx *gin.Context) {
 
 	// 检查交易参数
 	if msg, ok := checkTranParameters(&pt); !ok {
-		hr := warpGoodHttpResponse(msg)
+		hr := errResponse(msg)
 		log.Infof(msg + "\n")
 		ctx.JSON(http.StatusOK, hr)
 		return
@@ -358,57 +382,8 @@ func postTran(ctx *gin.Context) {
 	//默认N0为主节点，直接把请求信息发送至N0
 	util.TCPSend(msg, global.NodeTable[global.Master])
 	//返回提交成功
-	hr := warpGoodHttpResponse(common.Success)
+	hr := goodResponse("")
 	ctx.JSON(http.StatusOK, hr)
-}
-
-//用户查询当前所有区块-->获取当前的区块链
-func getBlockChain(ctx *gin.Context) {
-	//获取当前区块链
-	bcs := chain.GetCurrentBlockChain()
-	hr := warpGoodHttpResponse(bcs)
-	ctx.JSON(http.StatusOK, hr)
-}
-
-//用户根据区块高度获取到某一个区块
-func getBlock(ctx *gin.Context) {
-	//获取到请求参数中的区块高度
-	h := ctx.Query("height")
-	hInt64, err := strconv.ParseInt(h, 10, 64)
-	if err != nil {
-		log.Error("[getBlock],parseInt err:", err)
-		panic(err)
-	}
-	hInt := int(hInt64)
-	bc := chain.GetBlock(hInt)
-	if bc == nil {
-		hr := warpGoodHttpResponse("Invalid param")
-		ctx.JSON(http.StatusBadRequest, hr)
-	} else {
-		hr := warpGoodHttpResponse(bc)
-		ctx.JSON(http.StatusOK, hr)
-	}
-}
-
-//用户获取到某一区块中的所有交易
-func getBlockTrans(ctx *gin.Context) {
-	//先解析出请求中的区块高度
-	h := ctx.Query("height")
-	hInt64, err := strconv.ParseInt(h, 10, 64)
-	if err != nil {
-		log.Error("[getBlock],parseInt err:", err)
-		panic(err)
-	}
-	hInt := int(hInt64)
-	bc := chain.GetBlock(hInt)
-	if bc == nil {
-		hr := warpGoodHttpResponse("Invalid param")
-		ctx.JSON(http.StatusBadRequest, hr)
-	} else {
-		trans := bc.TX
-		hr := warpGoodHttpResponse(trans)
-		ctx.JSON(http.StatusOK, hr)
-	}
 }
 
 func postCrossTran(ctx *gin.Context) {
@@ -425,7 +400,7 @@ func postCrossTran(ctx *gin.Context) {
 
 	// 检查交易参数
 	if msg, ok := checkCrossTranParameters(&pt); !ok {
-		hr := warpGoodHttpResponse(msg)
+		hr := errResponse(msg)
 		log.Infof(msg + "\n")
 		ctx.JSON(http.StatusOK, hr)
 		return
@@ -467,30 +442,25 @@ func postCrossTran(ctx *gin.Context) {
 	//默认N0为主节点，直接把请求信息发送至N0
 	util.TCPSend(msg, global.NodeTable[global.Master])
 	//返回提交成功
-	hr := warpGoodHttpResponse(common.Success)
+	hr := goodResponse("")
 	ctx.JSON(http.StatusOK, hr)
 }
 
-func warpGoodHttpResponse(data interface{}) meta.HttpResponse {
+// 正常响应，返回数据
+func goodResponse(data interface{}) meta.HttpResponse {
 	res := meta.HttpResponse{
-		StatusCode: http.StatusOK,
 		Data:       data,
 		Code:       20000,
 	}
 	return res
 }
-func warpBadHttpResponse(data interface{}) meta.HttpResponse {
-	res := meta.HttpResponse{
-		StatusCode: http.StatusBadRequest,
-		Data:       data,
-	}
-	return res
-}
 
-func warpHttpResponse(status int, data interface{}) meta.HttpResponse {
+// 出现异常，返回异常信息
+func errResponse(errMsg string) meta.HttpResponse {
 	res := meta.HttpResponse{
-		StatusCode: status,
-		Data:       data,
+		Error: 		errMsg,
+		Data: 		"",
+		Code:       20000,
 	}
 	return res
 }

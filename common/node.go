@@ -1,9 +1,9 @@
 package common
 
 const Client1ToNodeAddr = "127.0.0.1:8008" // 客户端与节点通信的监听地址
-const Client1ToUserAddr = ":8009"          // 客户端与前端用户通信监听地址
+const Client1ToUserAddr = "127.0.0.1:8009" // 客户端与前端用户通信监听地址
 const Client2ToNodeAddr = "127.0.0.1:8010"
-const Client2ToUserAddr = ":8011"
+const Client2ToUserAddr = "127.0.0.1:8011"
 
 // 节点个数
 const NodeCount = 4
