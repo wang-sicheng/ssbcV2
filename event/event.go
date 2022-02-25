@@ -36,11 +36,13 @@ func InitEventData() {
 
 func UpdateToLevelDB(data map[string]meta.JFTreeData)  {
 	dataBytes, _ := json.Marshal(data)
+	log.Infof("evenData update to leveldb: %+v", data)
 	levelDB.DBPut(common.EventAllDataKey, dataBytes)
 }
 
 // 将事件消息转换成需要上链的交易
 func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
+	log.Infof("eventToTransaction: current eventData: %+v", EventData)
 	value := EventData[message.EventID]
 	event, ok := value.(meta.Event)
 	if !ok {
@@ -178,6 +180,7 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		events[index].FromAddress = from
 		EventData[events[index].EventID] = events[index] // 先更新到内存中，最后统一落库
 		treeDataList = append(treeDataList, events[index])
+		log.Infof("new event: %+v", events[index])
 		_ = pushEventToRedis(events[index])
 	}
 	// 生成新的订阅
@@ -193,6 +196,7 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		subs[index].FromAddress = from
 		edata, _ := EventData[eid].(meta.Event)
 		edata.Subscriptions = append(edata.Subscriptions, subs[index].SubID) // 更新事件的订阅信息
+		log.Infof("new eventSub: %+v", subs[index])
 
 		EventData[subs[index].SubID] = subs[index]
 		treeDataList = append(treeDataList, subs[index])

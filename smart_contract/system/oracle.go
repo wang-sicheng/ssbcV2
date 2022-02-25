@@ -42,6 +42,7 @@ func NewSub(args map[string]string) (interface{}, error) {
 		log.Errorf("callback unmarshal error: %s", err)
 		return nil, err
 	}
+	log.Infof("newSub callback info: %+v", cb)
 	sub.EventID = eid
 	sub.Callback = cb
 	res.EventSubs = append(res.EventSubs, sub)
@@ -94,5 +95,11 @@ func QueryData(args map[string]string) (interface{}, error) {
 	subRes, _ := res2.(meta.ContractUpdateData)
 	res.Events = eventRes.Events
 	res.EventSubs = subRes.EventSubs
+	log.Infof("queryData res: %+v", res)
 	return res, nil
+}
+
+// 回退函数，当没有方法匹配时执行此方法
+func Fallback(args map[string]string) (interface{}, error) {
+	return nil, nil
 }

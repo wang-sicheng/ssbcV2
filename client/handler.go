@@ -273,6 +273,7 @@ func postEvent(ctx *gin.Context) {
 		log.Errorf("[postEvent], json decode err: %s", err)
 		return
 	}
+	log.Infof("postEvent params: %+v", params)
 	var args map[string]string
 	err = json.Unmarshal([]byte(params.Args), &args)
 	if err != nil {

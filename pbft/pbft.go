@@ -153,6 +153,7 @@ func (p *pbft) handlePBFTMsg(msg meta.TCPMessage) {
 //处理客户端发来的请求
 func (p *pbft) handleClientRequest(content []byte) {
 	log.Info("主节点已接收到客户端发来的request ...")
+	log.Infof("request info: %s", string(content))
 	//Step1:使用json解析出Request结构体
 	r := new(Request)
 	err := json.Unmarshal(content, r)
@@ -169,6 +170,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 			log.Errorf("event message decode error: %s", err)
 		} else {
 			eventTrans, err := event.EventToTransaction(message)
+			log.Infof("EventToTransaction: new transaction: %+v", eventTrans)
 			if err != nil {
 				log.Errorf("event to trans error: %s", err)
 			}
