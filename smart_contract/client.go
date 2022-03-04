@@ -83,3 +83,4 @@ func CallContract(name string, method string, args map[string]string) (interface
 	log.Infof("执行结果：%v\n", a)
 	return a, nil
 }
+

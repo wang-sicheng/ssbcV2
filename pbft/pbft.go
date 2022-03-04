@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -697,6 +698,34 @@ func (p *pbft) deployContract(name, code string) error {
 				log.Error(err)
 			}
 			return err
+		}
+	}
+	return nil
+}
+
+// 部署预言机系统智能合约
+func (p *pbft)DeploySysContract() error {
+	r, _ := regexp.Compile("(.*).go")
+	fds, err := ioutil.ReadDir("./smart_contract/system")
+	if err != nil {
+		log.Errorf("遍历smart_contract/system失败: %s", err)
+		return err
+	}
+	for _, fi := range fds {
+		if !fi.IsDir() {
+			res := r.FindStringSubmatch(fi.Name())
+			if len(res) == 2 {
+				contractName := res[1]
+				code, _ := ioutil.ReadFile("./smart_contract/system/"+fi.Name())
+				//log.Infof("name: %s", contractName)
+				err := p.deployContract(contractName, string(code))
+				if err != nil {
+					log.Errorf("系统合约部署失败:%s,%s", fi.Name(), err)
+					continue
+				} else {
+					log.Infof("系统合约%s部署成功", contractName)
+				}
+			}
 		}
 	}
 	return nil

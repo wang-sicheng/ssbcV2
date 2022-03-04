@@ -49,6 +49,7 @@ func main() {
 
 	rootDir, _ := os.Getwd()
 	global.RootDir = rootDir	// 记录项目根目录
+	global.NodeID = nodeID
 
 	if util.Contains(common.Ssbc1Nodes, nodeID) {
 		global.ChainID = "ssbc1"
@@ -61,11 +62,14 @@ func main() {
 		if nodeID == "client1" {
 			go client.ListenRequest() // 启动客户端程序
 			p := pbft.NewPBFT(nodeID, common.Client1ToNodeAddr)
+			p.DeploySysContract()
 			go p.TcpListen()
 		} else if addr, ok := common.NodeTable1[nodeID]; ok {
 			p := pbft.NewPBFT(nodeID, addr)
+			p.DeploySysContract() // 部署系统智能合约
 			go p.TcpListen() //启动节点
 		}
+
 	}
 
 	if util.Contains(common.Ssbc2Nodes, nodeID) {
@@ -79,16 +83,17 @@ func main() {
 		if nodeID == "client2" {
 			go client.ListenRequest() // 启动客户端程序
 			p := pbft.NewPBFT(nodeID, common.Client2ToNodeAddr)
+			p.DeploySysContract()
 			go p.TcpListen()
 		} else if addr, ok := common.NodeTable2[nodeID]; ok {
 			p := pbft.NewPBFT(nodeID, addr)
+			p.DeploySysContract()
 			go p.TcpListen() //启动节点
 		}
 	}
 
 	// 初始化
 	initBlockChain(nodeID)
-	global.NodeID = nodeID
 
 	select {}
 }
