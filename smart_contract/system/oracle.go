@@ -29,8 +29,8 @@ func NewSub(args map[string]string) (interface{}, error) {
 	var sub meta.EventSub
 	sub.FromAddress = smart_contract.Caller
 	eid, ok := args["event_id"]
-	if !ok {
-		return nil, errors.New("miss event_id field")
+	if ok {
+		sub.EventID = eid // 不是必须，也可以自定义targetEvent
 	}
 	cbStr, ok := args["callback"]
 	if !ok {
@@ -93,7 +93,9 @@ func QueryData(args map[string]string) (interface{}, error) {
 		return nil, err
 	}
 	subRes, _ := res2.(meta.ContractUpdateData)
-	res.Events = eventRes.Events
+	// 自动订阅获取数据的事件
+	subRes.EventSubs[0].TargetEvent = eventRes.Events[0]
+	//res.Events = eventRes.Events
 	res.EventSubs = subRes.EventSubs
 	log.Infof("queryData res: %+v", res)
 	return res, nil

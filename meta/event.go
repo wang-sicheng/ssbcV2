@@ -20,6 +20,7 @@ type Event struct {
 type EventSub struct {
 	SubID       string
 	EventID     string
+	TargetEvent Event    // 支持订阅自定义事件，此时不需要eventId
 	Callback    Callback // 回调智能合约，处理逻辑
 	Publisher   []string // 支持对部分发布者产生响应
 	EventRate   int      // 触发频率

@@ -186,9 +186,21 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 	// 生成新的订阅
 	for index, s := range subs {
 		eid := s.EventID
-		if !IsContainsKey(eid) { // 要订阅的事件不存在
-			log.Errorf("the event to sub is not exist: %s", eid)
-			continue
+		tarEvent := s.TargetEvent
+		if eid == "" { // eid不存在，自动生成event
+			curSeq ++
+			eventHash, _ := util.CalculateHash([]byte(from+string(curSeq))) // 外部账户地址和seq唯一决定一个事件
+			tarEvent.EventID = hex.EncodeToString(eventHash)
+			tarEvent.FromAddress = from
+			EventData[tarEvent.EventID] = tarEvent // 先更新到内存中，最后统一落库
+			treeDataList = append(treeDataList, tarEvent)
+			log.Infof("new event: %+v", tarEvent)
+			_ = pushEventToRedis(tarEvent)
+		} else {
+			if !IsContainsKey(eid) { // 要订阅的事件不存在
+				log.Errorf("the event to sub is not exist: %s", eid)
+				continue
+			}
 		}
 		curSeq ++
 		subHash, _ := util.CalculateHash([]byte(from+string(curSeq)))
