@@ -1,0 +1,7 @@
+env:
+  language: golang
+
+inspection:
+  static_code: false   # 静态代码检测
+  model_check: false   # 模型检测
+

@@ -8,6 +8,7 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/config"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
@@ -74,11 +75,13 @@ func postContract(ctx *gin.Context) {
 		return
 	}
 
-	result, err := staticCodeInspection(postC.Code)
-	if err != nil {
-		hr := errResponse(result)
-		ctx.JSON(http.StatusOK, hr)
-		return
+	if config.Get("inspection.static_code").(bool) {
+		result, err := staticCodeInspection(postC.Code)
+		if err != nil {
+			hr := errResponse(result)
+			ctx.JSON(http.StatusOK, hr)
+			return
+		}
 	}
 
 	// 封装为交易发送至主节点，经共识后真正部署

@@ -47,6 +47,9 @@ func main() {
 	// 从levelDB读取账户信息（必须在数据库建立连接后，所以不能在init()完成）
 	account.GetFromDisk()
 
+	rootDir, _ := os.Getwd()
+	global.RootDir = rootDir	// 记录项目根目录
+
 	if util.Contains(common.Ssbc1Nodes, nodeID) {
 		global.ChainID = "ssbc1"
 		global.Master = "N0"

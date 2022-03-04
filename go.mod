@@ -4,22 +4,16 @@ go 1.14
 
 require (
 	github.com/cloudflare/cfssl v1.5.0
-	github.com/containerd/containerd v1.5.2 // indirect
-	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/docker v20.10.6+incompatible
-	github.com/docker/go-connections v0.4.0
 	github.com/gin-gonic/gin v1.7.2
 	github.com/go-redis/redis/v8 v8.8.3
-	github.com/google/keytransparency v0.3.0
-	github.com/hyperledger/fabric-chaincode-go v0.0.0-20210319203922-6b661064d4d9
-	github.com/hyperledger/fabric-protos-go v0.0.0-20210520141515-88b9de28f790
-	github.com/libp2p/go-libp2p v0.14.0
-	github.com/libp2p/go-libp2p-core v0.8.5
-	github.com/magiconair/properties v1.8.1
-	github.com/moby/sys/mount v0.3.0 // indirect
-	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/prometheus/common v0.10.0
 	github.com/rjkris/go-jellyfish-merkletree v0.0.0-20211214081745-22621b3119b5
+	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/spf13/afero v1.8.1 // indirect
+	github.com/spf13/viper v1.10.1
 	github.com/syndtr/goleveldb v1.0.0
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	gopkg.in/ini.v1 v1.66.4 // indirect
 	gotest.tools v2.2.0+incompatible
 )

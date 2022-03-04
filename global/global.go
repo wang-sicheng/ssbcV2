@@ -13,6 +13,7 @@ var TaskList = []meta.ContractTask{}      // 当前区块智能合约执行队�
 /*
  * 以下参数根据命令行参数确定，不要重新赋值
  */
+var RootDir string // 项目根目录
 var NodeID string // 当前节点的 nodeID，用于单机多节点运行时区分目录
 var ChainID string
 var Master = "" // master节点ID
