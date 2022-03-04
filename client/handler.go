@@ -74,6 +74,13 @@ func postContract(ctx *gin.Context) {
 		return
 	}
 
+	result, err := staticCodeInspection(postC.Code)
+	if err != nil {
+		hr := errResponse(result)
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
+
 	// 封装为交易发送至主节点，经共识后真正部署
 	go sendNewContract(postC)
 	hr := goodResponse("")
