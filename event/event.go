@@ -36,7 +36,7 @@ func InitEventData() {
 
 func UpdateToLevelDB(data map[string]meta.JFTreeData)  {
 	dataBytes, _ := json.Marshal(data)
-	log.Infof("evenData update to leveldb: %+v", data)
+	log.Infof("事件状态信息已更新至leveldb: %+v", data)
 	levelDB.DBPut(common.EventAllDataKey, dataBytes)
 }
 
@@ -180,8 +180,10 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		events[index].FromAddress = from
 		EventData[events[index].EventID] = events[index] // 先更新到内存中，最后统一落库
 		treeDataList = append(treeDataList, events[index])
-		log.Infof("new event: %+v", events[index])
-		_ = pushEventToRedis(events[index])
+		log.Infof("注册事件成功: %+v", events[index])
+		if global.NodeID == global.Master {
+			_ = pushEventToRedis(events[index])
+		}
 	}
 	// 生成新的订阅
 	for index, s := range subs {
@@ -193,9 +195,13 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 			tarEvent.EventID = hex.EncodeToString(eventHash)
 			tarEvent.FromAddress = from
 			EventData[tarEvent.EventID] = tarEvent // 先更新到内存中，最后统一落库
+			eid = tarEvent.EventID
+			subs[index].EventID = eid
 			treeDataList = append(treeDataList, tarEvent)
-			log.Infof("new event: %+v", tarEvent)
-			_ = pushEventToRedis(tarEvent)
+			if global.NodeID == global.Master {
+				_ = pushEventToRedis(tarEvent)
+			}
+			log.Infof("注册事件成功: %+v", tarEvent)
 		} else {
 			if !IsContainsKey(eid) { // 要订阅的事件不存在
 				log.Errorf("the event to sub is not exist: %s", eid)
@@ -208,10 +214,12 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		subs[index].FromAddress = from
 		edata, _ := EventData[eid].(meta.Event)
 		edata.Subscriptions = append(edata.Subscriptions, subs[index].SubID) // 更新事件的订阅信息
-		log.Infof("new eventSub: %+v", subs[index])
+		log.Infof("订阅信息注册成功: %+v", subs[index])
 
 		EventData[subs[index].SubID] = subs[index]
-		treeDataList = append(treeDataList, subs[index])
+		EventData[eid] = edata
+		treeDataList = append(treeDataList, subs[index]) // 更新到状态树
+		treeDataList = append(treeDataList, edata)
 	}
 	UpdateToLevelDB(EventData)
 	return treeDataList, nil
@@ -224,7 +232,7 @@ func pushEventToRedis(event meta.Event) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("event is pushed into list: %+v", event)
+	log.Infof("事件输出到队列: %+v", event)
 	return nil
 }
 
