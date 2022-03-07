@@ -704,7 +704,7 @@ func (p *pbft) deployContract(name, code string) error {
 }
 
 // 部署预言机系统智能合约
-func (p *pbft)DeploySysContract() error {
+func (p *pbft) DeploySysContract() error {
 	r, _ := regexp.Compile("(.*).go")
 	fds, err := ioutil.ReadDir("./smart_contract/system")
 	if err != nil {
@@ -716,7 +716,7 @@ func (p *pbft)DeploySysContract() error {
 			res := r.FindStringSubmatch(fi.Name())
 			if len(res) == 2 {
 				contractName := res[1]
-				code, _ := ioutil.ReadFile("./smart_contract/system/"+fi.Name())
+				code, _ := ioutil.ReadFile("./smart_contract/system/" + fi.Name())
 				//log.Infof("name: %s", contractName)
 				err := p.deployContract(contractName, string(code))
 				if err != nil {

@@ -17,9 +17,6 @@ import (
 
 var EventData map[string]meta.JFTreeData
 
-
-
-
 func init() {
 	EventData = map[string]meta.JFTreeData{}
 }
@@ -34,7 +31,7 @@ func InitEventData() {
 	_ = json.Unmarshal(dataBytes, &EventData)
 }
 
-func UpdateToLevelDB(data map[string]meta.JFTreeData)  {
+func UpdateToLevelDB(data map[string]meta.JFTreeData) {
 	dataBytes, _ := json.Marshal(data)
 	log.Infof("事件状态信息已更新至leveldb: %+v", data)
 	levelDB.DBPut(common.EventAllDataKey, dataBytes)
@@ -87,7 +84,7 @@ func HandleContractTask() error {
 	task := global.TaskList[0]
 	global.TaskList = global.TaskList[1:]
 
-	smart_contract.LoadInfo(task)		// 加载合约的相关信息，供合约内部使用
+	smart_contract.LoadInfo(task) // 加载合约的相关信息，供合约内部使用
 	res, err := smart_contract.CallContract(task.Name, task.Method, task.Args)
 	if err != nil {
 		log.Info(err)
@@ -122,7 +119,7 @@ func HandleContractTask() error {
 			}
 			global.TaskList = append(global.TaskList, meta.ContractTask{
 				Caller: sData.Callback.Caller,
-				Value: sData.Callback.Value,
+				Value:  sData.Callback.Value,
 				Name:   sData.Callback.Contract,
 				Method: sData.Callback.Method,
 				Args:   sData.Callback.Args,
@@ -174,8 +171,8 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 	curSeq := ac.Seq
 	// 生成新的event
 	for index, _ := range events {
-		curSeq ++
-		eventHash, _ := util.CalculateHash([]byte(from+string(curSeq))) // 外部账户地址和seq唯一决定一个事件
+		curSeq++
+		eventHash, _ := util.CalculateHash([]byte(from + string(curSeq))) // 外部账户地址和seq唯一决定一个事件
 		events[index].EventID = hex.EncodeToString(eventHash)
 		events[index].FromAddress = from
 		EventData[events[index].EventID] = events[index] // 先更新到内存中，最后统一落库
@@ -190,8 +187,8 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		eid := s.EventID
 		tarEvent := s.TargetEvent
 		if eid == "" { // eid不存在，自动生成event
-			curSeq ++
-			eventHash, _ := util.CalculateHash([]byte(from+string(curSeq))) // 外部账户地址和seq唯一决定一个事件
+			curSeq++
+			eventHash, _ := util.CalculateHash([]byte(from + string(curSeq))) // 外部账户地址和seq唯一决定一个事件
 			tarEvent.EventID = hex.EncodeToString(eventHash)
 			tarEvent.FromAddress = from
 			EventData[tarEvent.EventID] = tarEvent // 先更新到内存中，最后统一落库
@@ -208,8 +205,8 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 				continue
 			}
 		}
-		curSeq ++
-		subHash, _ := util.CalculateHash([]byte(from+string(curSeq)))
+		curSeq++
+		subHash, _ := util.CalculateHash([]byte(from + string(curSeq)))
 		subs[index].SubID = hex.EncodeToString(subHash)
 		subs[index].FromAddress = from
 		edata, _ := EventData[eid].(meta.Event)
@@ -284,4 +281,3 @@ func pushEventToRedis(event meta.Event) error {
 //	UpdateToLevelDB(EventData)
 //	return treeDataList, nil
 //}
-

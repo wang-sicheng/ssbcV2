@@ -13,7 +13,7 @@ type Request struct {
 	Timestamp int64
 	//相当于clientID
 	ClientAddr string
-	Type int // 0表示交易，1表示事件
+	Type       int // 0表示交易，1表示事件
 }
 
 //<<PRE-PREPARE,v,n,d>,m>

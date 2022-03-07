@@ -39,7 +39,7 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 	var output bytes.Buffer
 
 	// 执行编译命令
-	cmd := exec.Command("go", "build", "-buildmode=plugin", contractName + ".go")
+	cmd := exec.Command("go", "build", "-buildmode=plugin", contractName+".go")
 	log.Infof("node id: %s", global.NodeID)
 	cmd.Dir = "./smart_contract/contract/" + global.NodeID + "/" + contractName
 	cmd.Stderr = &output
@@ -84,4 +84,3 @@ func CallContract(name string, method string, args map[string]string) (interface
 	log.Infof("执行结果：%v\n", a)
 	return a, nil
 }
-

@@ -1,14 +1,5 @@
 package meta
 
-//抽象区块头
-type AbstractBlockHeader struct {
-	ChainId    string
-	Height     int
-	Hash       []byte
-	PreHash    []byte
-	MerkleRoot []byte
-}
-
 type CrossTranParam struct {
 	ContractName string   //智能合约名
 	ContractFunc string   //智能合约函数

@@ -9,7 +9,6 @@ import (
 
 var externalData string
 
-
 // pull外部数据
 func NewRequest(args map[string]string) (interface{}, error) {
 	cb := meta.Callback{
@@ -22,8 +21,8 @@ func NewRequest(args map[string]string) (interface{}, error) {
 	}
 	cbBytes, _ := json.Marshal(cb)
 	reqArgs := map[string]string{
-		"type": "api", // "api":第三方接口，"chain":"跨链数据"
-		"url": "http://localhost:7777/testApi",
+		"type":     "api", // "api":第三方接口，"chain":"跨链数据"
+		"url":      "http://localhost:7777/testApi",
 		"callback": string(cbBytes),
 	}
 	// 日志事件

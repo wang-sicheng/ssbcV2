@@ -5,7 +5,7 @@ import (
 	"github.com/ssbcV2/global"
 )
 
-func Get(key string) interface{}  {
+func Get(key string) interface{} {
 	viper := viper2.New()
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")

@@ -217,11 +217,11 @@ func query(ctx *gin.Context) {
 
 	var response meta.HttpResponse
 	switch q.Type {
-	case "getBlockChain":	// 获取区块链
+	case "getBlockChain": // 获取区块链
 		bcs := chain.GetCurrentBlockChain()
 		response = goodResponse(bcs)
 
-	case "getBlock":		// 获取指定高度的区块
+	case "getBlock": // 获取指定高度的区块
 		height := q.Parameters[0]
 		hInt64, err := strconv.ParseInt(height, 10, 64)
 		if err != nil {
@@ -236,11 +236,11 @@ func query(ctx *gin.Context) {
 			response = goodResponse(bc)
 		}
 
-	case "getAllTxs":		// 获取所有的交易
+	case "getAllTxs": // 获取所有的交易
 		all := chain.GetAllTransactions()
 		response = goodResponse(all)
 
-	case "getAllAccounts":	// 获取所有的账户
+	case "getAllAccounts": // 获取所有的账户
 		all := []meta.Account{}
 		for _, address := range account.GetTotalAddress() {
 			account := account.GetAccount(address)
@@ -250,7 +250,7 @@ func query(ctx *gin.Context) {
 		}
 		response = goodResponse(all)
 
-	case "getOneBlockTxs":	// 获取指定高度的区块的所有交易
+	case "getOneBlockTxs": // 获取指定高度的区块的所有交易
 		h := ctx.Query("height")
 		hInt64, err := strconv.ParseInt(h, 10, 64)
 		if err != nil {
@@ -458,8 +458,8 @@ func postCrossTran(ctx *gin.Context) {
 // 正常响应，返回数据
 func goodResponse(data interface{}) meta.HttpResponse {
 	res := meta.HttpResponse{
-		Data:       data,
-		Code:       20000,
+		Data: data,
+		Code: 20000,
 	}
 	return res
 }
@@ -467,9 +467,9 @@ func goodResponse(data interface{}) meta.HttpResponse {
 // 出现异常，返回异常信息
 func errResponse(errMsg string) meta.HttpResponse {
 	res := meta.HttpResponse{
-		Error: 		errMsg,
-		Data: 		"",
-		Code:       20000,
+		Error: errMsg,
+		Data:  "",
+		Code:  20000,
 	}
 	return res
 }

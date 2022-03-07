@@ -19,10 +19,10 @@ type Account struct {
 type AccountData struct {
 	Code         string `json:"code"`         // 合约代码
 	ContractName string `json:"contractname"` // 合约名称
-	Publisher    string `json:"publisher"`	  // 部署合约的外部账户地址
+	Publisher    string `json:"publisher"`    // 部署合约的外部账户地址
 }
 
-func (ac Account)GetKey() common.HashValue {
+func (ac Account) GetKey() common.HashValue {
 	keyBytes, _ := hex.DecodeString(ac.Address)
 	return common.BytesToHash(keyBytes)
 }

@@ -10,10 +10,10 @@ type JFTreeData interface {
 }
 
 type Event struct {
-	Type string // 0:日志记录;1:api;2:跨链;3:事件外传
-	EventID     string
-	Args        map[string]string
-	FromAddress string // 事件定义方
+	Type          string // 0:日志记录;1:api;2:跨链;3:事件外传
+	EventID       string
+	Args          map[string]string
+	FromAddress   string   // 事件定义方
 	Subscriptions []string // 订阅方
 }
 
@@ -30,40 +30,37 @@ type EventSub struct {
 }
 
 type EventMessage struct {
-	From string
+	From      string
 	EventID   string
 	Data      map[string]string
 	Sign      []byte
 	PublicKey string
 	TimeStamp string
-	Hash []byte
+	Hash      []byte
 }
 
 type Callback struct {
-	Caller string		// 调用者地址
-	Value  int			// 调用合约的转账金额
+	Caller   string // 调用者地址
+	Value    int    // 调用合约的转账金额
 	Contract string
-	Method string
-	Args map[string]string
-	Address string // 合约地址
+	Method   string
+	Args     map[string]string
+	Address  string // 合约地址
 }
 
 type EventMessageParams struct {
-	From string `json:"from"`
-	EventKey string `json:"event_key"`
+	From      string `json:"from"`
+	EventKey  string `json:"event_key"`
 	PublicKey string `json:"public_key"`
-	Args string `json:"args"`
+	Args      string `json:"args"`
 }
 
-
-func (e Event)GetKey() common.HashValue {
+func (e Event) GetKey() common.HashValue {
 	keyBytes, _ := hex.DecodeString(e.EventID)
 	return common.BytesToHash(keyBytes)
 }
 
-func (es EventSub)GetKey() common.HashValue {
+func (es EventSub) GetKey() common.HashValue {
 	keyBytes, _ := hex.DecodeString(es.SubID)
 	return common.BytesToHash(keyBytes)
 }
-
-

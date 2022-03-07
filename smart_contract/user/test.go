@@ -5,7 +5,6 @@ import (
 	"github.com/ssbcV2/meta"
 )
 
-
 func ContractTest(args map[string]string) (interface{}, error) {
 	log.Infof("ContractTest: args from client: %+v", args)
 	return meta.ContractUpdateData{}, nil
@@ -15,4 +14,3 @@ func ContractTest(args map[string]string) (interface{}, error) {
 func Fallback(args map[string]string) (interface{}, error) {
 	return meta.ContractUpdateData{}, nil
 }
-

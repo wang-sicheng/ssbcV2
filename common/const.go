@@ -10,4 +10,3 @@ const TxsThreshold = 1
 
 const ChainId1 = "ssbc1"
 const ChainId2 = "ssbc2"
-

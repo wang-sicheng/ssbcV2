@@ -42,7 +42,7 @@ func codeCheck() (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
-	outStr, _ := "合约存在以下问题：" + string(stdout.Bytes()), string(stderr.Bytes())
+	outStr, _ := "合约存在以下问题："+string(stdout.Bytes()), string(stderr.Bytes())
 	if err != nil {
 		log.Errorf("cmd.Run() failed with %s\n", err)
 		return outStr, err

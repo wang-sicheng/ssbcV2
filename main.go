@@ -48,7 +48,7 @@ func main() {
 	account.GetFromDisk()
 
 	rootDir, _ := os.Getwd()
-	global.RootDir = rootDir	// 记录项目根目录
+	global.RootDir = rootDir // 记录项目根目录
 	global.NodeID = nodeID
 
 	if util.Contains(common.Ssbc1Nodes, nodeID) {
@@ -67,7 +67,7 @@ func main() {
 		} else if addr, ok := common.NodeTable1[nodeID]; ok {
 			p := pbft.NewPBFT(nodeID, addr)
 			p.DeploySysContract() // 部署系统智能合约
-			go p.TcpListen() //启动节点
+			go p.TcpListen()      //启动节点
 		}
 
 	}

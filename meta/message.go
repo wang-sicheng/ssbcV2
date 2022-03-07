@@ -9,7 +9,7 @@ type TCPMessage struct {
 }
 
 type HttpResponse struct {
-	Error 	   string      	`json:"error"`	// 如果不为空代表错误信息
-	Data       interface{}	`json:"data"`
-	Code       int 			`json:"code"` 	// vue-element-admin的前端校验码，必须为20000
+	Error string      `json:"error"` // 如果不为空代表错误信息
+	Data  interface{} `json:"data"`
+	Code  int         `json:"code"` // vue-element-admin的前端校验码，必须为20000
 }
