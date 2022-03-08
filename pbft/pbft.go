@@ -171,7 +171,6 @@ func (p *pbft) handleClientRequest(content []byte) {
 			log.Errorf("event message decode error: %s", err)
 		} else {
 			eventTrans, err := event.EventToTransaction(message)
-			log.Infof("EventToTransaction: new transaction: %+v", eventTrans)
 			if err != nil {
 				log.Errorf("event to trans error: %s", err)
 			}

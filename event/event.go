@@ -55,6 +55,9 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 		}
 		sub, ok := subValue.(meta.EventSub)
 		contractArgs := sub.Callback.Args
+		if len(contractArgs) == 0 { // 初始化
+			contractArgs = make(map[string]string)
+		}
 		for k, v := range message.Data { // 增加来自event message的参数
 			contractArgs[k] = v
 		}
@@ -74,6 +77,7 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 			Sign:      message.Sign,
 			Type:      meta.Invoke,
 		})
+		log.Infof("事件消息转换交易列表: %+v", trans)
 	}
 	return trans, nil
 }
