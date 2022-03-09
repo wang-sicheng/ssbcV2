@@ -56,6 +56,14 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 
 // 调用智能合约
 func CallContract(name string, method string, args map[string]string) (interface{}, error) {
+	SetRecurContext(name, method, args)
+	PrintContext()
+
+	defer func() {
+		stack.Pop()
+		curContext = stack.Top() // CallContract结束后获取上一层context
+	}()
+
 	// 参数校验
 	if name == "" || method == "" {
 		return nil, errors.New("invalid call params")

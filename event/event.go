@@ -88,7 +88,7 @@ func HandleContractTask() error {
 	task := global.TaskList[0]
 	global.TaskList = global.TaskList[1:]
 
-	smart_contract.LoadInfo(task) // 加载合约的相关信息，供合约内部使用
+	smart_contract.SetContext(task) // 加载合约的相关信息，供合约内部使用
 	res, err := smart_contract.CallContract(task.Name, task.Method, task.Args)
 	if err != nil {
 		log.Info(err)
@@ -132,7 +132,7 @@ func HandleContractTask() error {
 	}
 
 	// 处理事件和订阅信息
-	eList, err := UpdateEventData(data, smart_contract.Caller)
+	eList, err := UpdateEventData(data, smart_contract.Caller())
 	if err != nil {
 		log.Error(err)
 		return err
@@ -146,6 +146,13 @@ func HandleContractTask() error {
 // 暂时不考虑订阅当前智能合约
 func ExecuteInitEvent(name string, address string, from string) ([]meta.JFTreeData, error) {
 	var args map[string]string
+
+	smart_contract.SetContext(meta.ContractTask{
+		Caller: from,
+		Name:   name,
+		Method: "initEvent",
+		Args:   args,
+	})
 	res, err := smart_contract.CallContract(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
 	if err != nil {
 		log.Errorf("initEvent run error: %s", err)

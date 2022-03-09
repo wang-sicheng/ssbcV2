@@ -13,7 +13,7 @@ func NewEvent(args map[string]string) (interface{}, error) {
 	var res meta.ContractUpdateData
 	var event meta.Event
 
-	event.FromAddress = smart_contract.Caller
+	event.FromAddress = smart_contract.Caller()
 	event.Args = args
 	eventType, ok := args["event_type"]
 	if ok {
@@ -27,7 +27,7 @@ func NewEvent(args map[string]string) (interface{}, error) {
 func NewSub(args map[string]string) (interface{}, error) {
 	var res meta.ContractUpdateData
 	var sub meta.EventSub
-	sub.FromAddress = smart_contract.Caller
+	sub.FromAddress = smart_contract.Caller()
 	eid, ok := args["event_id"]
 	if ok {
 		sub.EventID = eid // 不是必须，也可以自定义targetEvent

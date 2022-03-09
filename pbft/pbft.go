@@ -495,7 +495,7 @@ func (p *pbft) execute(tx meta.Transaction) {
 	case meta.Transfer:
 		global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		smart_contract.LoadInfo(meta.ContractTask{
+		smart_contract.SetContext(meta.ContractTask{
 			Caller: tx.From, // 部署时加载发布人的地址，用于智能合约init
 		})
 
