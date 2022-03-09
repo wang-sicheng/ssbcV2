@@ -2,10 +2,8 @@ package smart_contract
 
 import (
 	"errors"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/global"
-	"plugin"
 )
 
 /*
@@ -54,7 +52,7 @@ func Transfer(to string, amount int) error {
 
 // 调用智能合约
 func CallContract(name string, method string, args map[string]string) (interface{}, error) {
-	SetRecurContext(name, method, args)
+	SetRecurContext(name, method, args, 0)
 	PrintContext()
 
 	defer func() {
@@ -62,31 +60,31 @@ func CallContract(name string, method string, args map[string]string) (interface
 		curContext = stack.Top() // CallContract结束后获取上一层context
 	}()
 
-	// 参数校验
-	if name == "" || method == "" {
-		return nil, errors.New("invalid call params")
-	}
-
-	dir := "./smart_contract/contract/" + global.NodeID + "/" + name + "/"
-	log.Info("call contract: " + dir)
-	p, err := plugin.Open(dir + name + ".so")
+	res, err := execute(name, method, args)
 	if err != nil {
 		return nil, err
 	}
-	f, err := p.Lookup(method)
+	return res, err
+}
+
+// 调用智能合约的同时向合约转账
+func CallWithValue(name string, method string, args map[string]string, value int) (interface{}, error) {
+	err := Transfer(name, value)	// 向合约转账
 	if err != nil {
-		log.Infof("找不到目标方法：%v，执行FallBack方法", method)
-		f, err := p.Lookup("Fallback")
-		if err != nil {
-			log.Info("没有提供Fallback方法")
-			return nil, err
-		}
-		a, _ := f.(func(map[string]string) (interface{}, error))(args)
-		log.Infof("执行结果：%v\n", a)
-		return a, nil
+		return nil, err
 	}
 
-	a, _ := f.(func(map[string]string) (interface{}, error))(args)
-	log.Infof("执行结果：%v\n", a)
-	return a, nil
+	SetRecurContext(name, method, args, value)
+	PrintContext()
+
+	defer func() {
+		stack.Pop()
+		curContext = stack.Top() // CallContract结束后获取上一层context
+	}()
+
+	res, err := execute(name, method, args)
+	if err != nil {
+		return nil, err
+	}
+	return res, err
 }

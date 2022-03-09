@@ -3,11 +3,13 @@ package smart_contract
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/meta"
 	"os/exec"
+	"plugin"
 )
 
 // 将智能合约编译成动态库
@@ -30,6 +32,36 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 	return nil, ""
 }
 
+func execute(name, method string, args map[string]string) (interface{}, error){
+	// 参数校验
+	if name == "" || method == "" {
+		return nil, errors.New("invalid call params")
+	}
+
+	dir := "./smart_contract/contract/" + global.NodeID + "/" + name + "/"
+	log.Info("call contract: " + dir)
+	p, err := plugin.Open(dir + name + ".so")
+	if err != nil {
+		return nil, err
+	}
+	f, err := p.Lookup(method)
+	if err != nil {
+		log.Infof("找不到目标方法：%v，执行FallBack方法", method)
+		f, err := p.Lookup("Fallback")
+		if err != nil {
+			log.Info("没有提供Fallback方法")
+			return nil, err
+		}
+		a, _ := f.(func(map[string]string) (interface{}, error))(args)
+		log.Infof("执行结果：%v\n", a)
+		return a, nil
+	}
+
+	a, _ := f.(func(map[string]string) (interface{}, error))(args)
+	log.Infof("执行结果：%v\n", a)
+	return a, nil
+}
+
 // 第一次调用合约前加载合约信息
 func SetContext(task meta.ContractTask) {
 	contractAccount := account.GetAccount(task.Name)
@@ -42,17 +74,17 @@ func SetContext(task meta.ContractTask) {
 }
 
 // 合约调用合约时设置合约信息
-func SetRecurContext(name string, method string, args map[string]string) {
+func SetRecurContext(name string, method string, args map[string]string, value int) {
 	if len(stack.contexts) == 0 { // 用户调用合约时（第一次调用）不执行该函数
 		stack.Push(curContext) // context设置完毕，入栈
 		return
 	}
 	curContext.Caller = curContext.Name // 调用者为上一个合约
+
 	curContext.Name = name
 	curContext.Method = method
 	curContext.Args = args
-
-	curContext.Value = 0 // 目前暂不支持合约转合约
+	curContext.Value = value
 
 	contract := account.GetAccount(name)
 	curContext.Balance = contract.Balance
