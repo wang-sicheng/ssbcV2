@@ -1,13 +1,16 @@
 #### 智能合约接口
 
-在合约中需要引入 smart_contract 包
+在合约中需要引入 contract 包
 ```golang
-import "github.com/ssbcV2/smart_contract"
+import "github.com/ssbcV2/contract"
 ```
 
 ```golang
 // 调用其他智能合约，需要自行封装参数和解析结果
-func CallContract(name string, method string, args map[string]string) (interface{}, error) 
+func Call(name string, method string, args map[string]string) (interface{}, error)
+
+// 调用智能合约同时向合约转账
+func CallWithValue(name string, method string, args map[string]string) (interface{}, error)
 
 // 本次调用是谁发起的，即调用者地址（合约账户、外部账户）
 func Caller() string
@@ -33,23 +36,23 @@ package main	// 包名必须为main
 
 import (
 	"github.com/cloudflare/cfssl/log"
-	"github.com/ssbcV2/smart_contract" // 使用内置功能时引入
+	"github.com/ssbcV2/contract" // 使用内置功能时引入
 )
 
 // 参数必须为 map[string]string, 返回结果必须为 (interface{}, error)
 func Multiply(args map[string]string) (interface{}, error) {
 	// 调用其他合约，自行封装参数
-	num, err := smart_contract.CallContract("random", "GetRandom", map[string]string{})
+	num, err := contract.Call("random", "GetRandom", map[string]string{})
 	if err != nil {
 		log.Infof("[Multiply] 调用random失败")
 		return nil, err
 	}
-	caller := smart_contract.Caller()
-	origin := smart_contract.Origin()
-	value  := smart_contract.Value()
-	balance:= smart_contract.Balance()
-	self   := smart_contract.Self()
-	smart_contract.Transfer(caller, value)
+	caller := contract.Caller()
+	origin := contract.Origin()
+	value  := contract.Value()
+	balance:= contract.Balance()
+	self   := contract.Self()
+	contract.Transfer(caller, value)
 	
 	a := num.(int)
 	log.Infof("[Multiply] 调用 random.GetRandom 成功，结果：%v\n", a)

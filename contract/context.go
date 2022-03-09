@@ -1,4 +1,4 @@
-package smart_contract
+package contract
 
 // 合约调用上下文
 type context struct {

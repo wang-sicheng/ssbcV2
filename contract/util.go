@@ -1,4 +1,4 @@
-package smart_contract
+package contract
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 	// 执行编译命令
 	cmd := exec.Command("go", "build", "-buildmode=plugin", contractName+".go")
 	log.Infof("node id: %s", global.NodeID)
-	cmd.Dir = "./smart_contract/contract/" + global.NodeID + "/" + contractName
+	cmd.Dir = "./contract/contract/" + global.NodeID + "/" + contractName
 	cmd.Stderr = &output
 	err = cmd.Run()
 	if err != nil {
@@ -32,13 +32,13 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 	return nil, ""
 }
 
-func execute(name, method string, args map[string]string) (interface{}, error){
+func execute(name, method string, args map[string]string) (interface{}, error) {
 	// 参数校验
 	if name == "" || method == "" {
 		return nil, errors.New("invalid call params")
 	}
 
-	dir := "./smart_contract/contract/" + global.NodeID + "/" + name + "/"
+	dir := "./contract/contract/" + global.NodeID + "/" + name + "/"
 	log.Info("call contract: " + dir)
 	p, err := plugin.Open(dir + name + ".so")
 	if err != nil {

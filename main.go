@@ -26,7 +26,7 @@ func main() {
 	}
 	nodeID := os.Args[1]
 
-	// 删除 levelDB/path 和 smart_contract/contract 目录
+	// 删除 levelDB/path 和 contract/contract 目录
 	if nodeID == "clear" {
 		clear()
 		return
@@ -137,6 +137,6 @@ func initBlockChain(ID string) {
 // 清空数据
 func clear() {
 	os.RemoveAll("./levelDB/db/path/")
-	os.RemoveAll("./smart_contract/contract/")
+	os.RemoveAll("./contract/contract/")
 	log.Info("成功删除数据!")
 }

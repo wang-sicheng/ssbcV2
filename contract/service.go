@@ -1,4 +1,4 @@
-package smart_contract
+package contract
 
 import (
 	"errors"
@@ -51,7 +51,7 @@ func Transfer(to string, amount int) error {
 }
 
 // 调用智能合约
-func CallContract(name string, method string, args map[string]string) (interface{}, error) {
+func Call(name string, method string, args map[string]string) (interface{}, error) {
 	SetRecurContext(name, method, args, 0)
 	PrintContext()
 
@@ -69,7 +69,7 @@ func CallContract(name string, method string, args map[string]string) (interface
 
 // 调用智能合约的同时向合约转账
 func CallWithValue(name string, method string, args map[string]string, value int) (interface{}, error) {
-	err := Transfer(name, value)	// 向合约转账
+	err := Transfer(name, value) // 向合约转账
 	if err != nil {
 		return nil, err
 	}

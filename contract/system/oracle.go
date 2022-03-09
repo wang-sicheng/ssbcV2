@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/contract" // 调用其他智能合约时引入
 	"github.com/ssbcV2/meta"
-	"github.com/ssbcV2/smart_contract" // 调用其他智能合约时引入
 )
 
 // 定义事件函数
@@ -13,7 +13,7 @@ func NewEvent(args map[string]string) (interface{}, error) {
 	var res meta.ContractUpdateData
 	var event meta.Event
 
-	event.FromAddress = smart_contract.Caller()
+	event.FromAddress = contract.Caller()
 	event.Args = args
 	eventType, ok := args["event_type"]
 	if ok {
@@ -27,7 +27,7 @@ func NewEvent(args map[string]string) (interface{}, error) {
 func NewSub(args map[string]string) (interface{}, error) {
 	var res meta.ContractUpdateData
 	var sub meta.EventSub
-	sub.FromAddress = smart_contract.Caller()
+	sub.FromAddress = contract.Caller()
 	eid, ok := args["event_id"]
 	if ok {
 		sub.EventID = eid // 不是必须，也可以自定义targetEvent
@@ -81,13 +81,13 @@ func QueryData(args map[string]string) (interface{}, error) {
 	}
 	subArgs["callback"] = callback
 
-	res1, err := smart_contract.CallContract("oracle", "NewEvent", eventArgs)
+	res1, err := contract.Call("oracle", "NewEvent", eventArgs)
 	if err != nil {
 		log.Errorf("call newEvent contract error: %s", err)
 		return nil, err
 	}
 	eventRes, _ := res1.(meta.ContractUpdateData)
-	res2, err := smart_contract.CallContract("oracle", "NewSub", subArgs)
+	res2, err := contract.Call("oracle", "NewSub", subArgs)
 	if err != nil {
 		log.Errorf("call newSub contract error: %s", err)
 		return nil, err

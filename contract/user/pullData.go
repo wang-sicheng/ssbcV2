@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/contract" // 调用其他智能合约时引入
 	"github.com/ssbcV2/meta"
-	"github.com/ssbcV2/smart_contract" // 调用其他智能合约时引入
 )
 
 var externalData string
@@ -30,16 +30,16 @@ func NewRequest(args map[string]string) (interface{}, error) {
 		"state": "success",
 	}
 	// 调用QueryData预言机合约请求外部数据
-	res, err := smart_contract.CallContract("oracle", "QueryData", reqArgs)
+	res, err := contract.Call("oracle", "QueryData", reqArgs)
 	if err != nil {
 		log.Errorf("call QueryData contract error: %s", err)
 		recordArgs["state"] = "fail"
-		_, err = smart_contract.CallContract("oracle", "RecordEvent", recordArgs)
+		_, err = contract.Call("oracle", "RecordEvent", recordArgs)
 		return nil, err
 	}
 	resBytes, _ := json.Marshal(res)
 	recordArgs["res"] = string(resBytes)
-	_, err = smart_contract.CallContract("oracle", "RecordEvent", recordArgs)
+	_, err = contract.Call("oracle", "RecordEvent", recordArgs)
 	return res, nil
 }
 
@@ -51,11 +51,11 @@ func UpdateData(args map[string]string) (interface{}, error) {
 	newData, ok := args["data"]
 	if !ok {
 		recordArgs["state"] = "fail"
-		_, err := smart_contract.CallContract("oracle", "RecordEvent", recordArgs)
+		_, err := contract.Call("oracle", "RecordEvent", recordArgs)
 		return nil, err
 	}
 	externalData = newData
-	_, _ = smart_contract.CallContract("oracle", "RecordEvent", recordArgs)
+	_, _ = contract.Call("oracle", "RecordEvent", recordArgs)
 	return nil, nil
 }
 

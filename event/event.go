@@ -7,11 +7,11 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/redis"
-	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 )
 
@@ -88,8 +88,8 @@ func HandleContractTask() error {
 	task := global.TaskList[0]
 	global.TaskList = global.TaskList[1:]
 
-	smart_contract.SetContext(task) // 加载合约的相关信息，供合约内部使用
-	res, err := smart_contract.CallContract(task.Name, task.Method, task.Args)
+	contract.SetContext(task) // 加载合约的相关信息，供合约内部使用
+	res, err := contract.Call(task.Name, task.Method, task.Args)
 	if err != nil {
 		log.Info(err)
 		return err
@@ -132,7 +132,7 @@ func HandleContractTask() error {
 	}
 
 	// 处理事件和订阅信息
-	eList, err := UpdateEventData(data, smart_contract.Caller())
+	eList, err := UpdateEventData(data, contract.Caller())
 	if err != nil {
 		log.Error(err)
 		return err
@@ -147,13 +147,13 @@ func HandleContractTask() error {
 func ExecuteInitEvent(name string, address string, from string) ([]meta.JFTreeData, error) {
 	var args map[string]string
 
-	smart_contract.SetContext(meta.ContractTask{
+	contract.SetContext(meta.ContractTask{
 		Caller: from,
 		Name:   name,
 		Method: "initEvent",
 		Args:   args,
 	})
-	res, err := smart_contract.CallContract(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
+	res, err := contract.Call(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
 	if err != nil {
 		log.Errorf("initEvent run error: %s", err)
 		return nil, err
@@ -247,7 +247,7 @@ func pushEventToRedis(event meta.Event) error {
 //func UpdateEventData(name string, address string, from string) ([]meta.JFTreeData, error) {
 //	var args map[string]string
 //	var treeDataList []meta.JFTreeData
-//	res, err := smart_contract.CallContract(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
+//	res, err := contract.Call(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
 //	if err != nil {
 //		log.Errorf("initEvent run error: %s", err)
 //		return nil, err

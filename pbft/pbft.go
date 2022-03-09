@@ -9,12 +9,12 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/event"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
-	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"io/ioutil"
 	"net"
@@ -495,7 +495,7 @@ func (p *pbft) execute(tx meta.Transaction) {
 	case meta.Transfer:
 		global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		smart_contract.SetContext(meta.ContractTask{
+		contract.SetContext(meta.ContractTask{
 			Caller: tx.From, // 部署时加载发布人的地址，用于智能合约init
 		})
 
@@ -671,7 +671,7 @@ func (p *pbft) getPivKey(nodeID string) []byte {
 }
 
 func (p *pbft) deployContract(name, code string) error {
-	dir := "./smart_contract/contract/" + p.node.nodeID + "/" + name + "/"
+	dir := "./contract/contract/" + p.node.nodeID + "/" + name + "/"
 	if util.FileExists(dir) {
 		log.Error("该合约已存在")
 		return errors.New("该合约已存在")
@@ -689,7 +689,7 @@ func (p *pbft) deployContract(name, code string) error {
 		defer destFile.Close()
 		_, _ = destFile.WriteString(code)
 
-		err, _ = smart_contract.GoBuildPlugin(name)
+		err, _ = contract.GoBuildPlugin(name)
 		if err != nil {
 			//将文件夹删除
 			err := os.RemoveAll(dir)
@@ -705,9 +705,9 @@ func (p *pbft) deployContract(name, code string) error {
 // 部署预言机系统智能合约
 func (p *pbft) DeploySysContract() error {
 	r, _ := regexp.Compile("(.*).go")
-	fds, err := ioutil.ReadDir("./smart_contract/system")
+	fds, err := ioutil.ReadDir("./contract/system")
 	if err != nil {
-		log.Errorf("遍历smart_contract/system失败: %s", err)
+		log.Errorf("遍历contract/system失败: %s", err)
 		return err
 	}
 	for _, fi := range fds {
@@ -715,7 +715,7 @@ func (p *pbft) DeploySysContract() error {
 			res := r.FindStringSubmatch(fi.Name())
 			if len(res) == 2 {
 				contractName := res[1]
-				code, _ := ioutil.ReadFile("./smart_contract/system/" + fi.Name())
+				code, _ := ioutil.ReadFile("./contract/system/" + fi.Name())
 				//log.Infof("name: %s", contractName)
 				err := p.deployContract(contractName, string(code))
 				if err != nil {
