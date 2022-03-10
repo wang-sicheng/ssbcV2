@@ -504,7 +504,7 @@ func (p *pbft) execute(tx meta.Transaction) {
 			log.Error("节点部署合约出错: ", err)
 			return
 		}
-		newAccount := account.CreateContract(tx.Contract, tx.Data.Code, tx.From)
+		newAccount := account.CreateContract(tx.Contract, tx.To, tx.Data.Code, tx.From)
 		global.ChangedAccounts = append(global.ChangedAccounts, newAccount)
 		//更新事件数据，每个节点都执行
 		contractName := tx.Contract
@@ -514,7 +514,7 @@ func (p *pbft) execute(tx meta.Transaction) {
 		// 调用合约的同时向合约账户转账
 		if tx.Value > 0 {
 			global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value))
-			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.Contract, tx.Value))
+			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.To, tx.Value))
 		}
 		// 每个节点都会去执行智能合约，需要确保智能合约执行的确定性（暂时没有做合约执行后的共识）
 		global.TaskList = append(global.TaskList, meta.ContractTask{

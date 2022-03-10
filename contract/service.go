@@ -42,10 +42,10 @@ func Transfer(to string, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
-	if !account.CanTransfer(curContext.Name, amount) {
+	if !account.CanTransfer(curContext.Address, amount) {
 		return errors.New("合约账户余额不足，无法转账")
 	}
-	global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(curContext.Name, amount))
+	global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(curContext.Address, amount))
 	global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(to, amount))
 	return nil
 }
@@ -69,7 +69,8 @@ func Call(name string, method string, args map[string]string) (interface{}, erro
 
 // 调用智能合约的同时向合约转账
 func CallWithValue(name string, method string, args map[string]string, value int) (interface{}, error) {
-	err := Transfer(name, value) // 向合约转账
+	targetAcc := account.GetContractByName(name)
+	err := Transfer(targetAcc.Address, value) // 向合约转账
 	if err != nil {
 		return nil, err
 	}

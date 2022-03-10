@@ -1,13 +1,11 @@
 package account
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
-	"github.com/ssbcV2/util"
 )
 
 /* 这里封装了所有的对账户的操作
@@ -19,14 +17,14 @@ import (
 var state State // 私有，通过函数进行操作
 
 type State struct {
-	Accounts map[string]meta.Account // Accounts 存储了所有账户（普通账户和合约账户），key: 账户地址(合约账户用的name) - val: 账户信息
+	Accounts map[string]meta.Account // Accounts 存储了所有账户（外部账户和合约账户），key: 账户地址 - val: 账户信息
 }
 
 func init() {
 	state.Accounts = map[string]meta.Account{}
 }
 
-// 创建普通账户
+// 创建外部账户
 func CreateAccount(address, publicKey string, balance int) meta.Account {
 	account := meta.Account{
 		Address:    address,
@@ -42,9 +40,9 @@ func CreateAccount(address, publicKey string, balance int) meta.Account {
 }
 
 // 创建智能合约账户
-func CreateContract(name, code, publisher string) meta.Account {
+func CreateContract(name, address, code, publisher string) meta.Account {
 	contract := meta.Account{
-		Address: generateContractAddress(),
+		Address: address,
 		Balance: 0,
 		Data: meta.AccountData{
 			Code:         code,
@@ -53,8 +51,7 @@ func CreateContract(name, code, publisher string) meta.Account {
 		},
 		IsContract: true,
 	}
-	// 用智能合约的名称作为key，以便调用时填名称即可
-	state.Accounts[name] = contract
+	state.Accounts[address] = contract
 
 	PutIntoDisk(state.Accounts)
 	return contract
@@ -104,15 +101,35 @@ func GetFromDisk() {
 	_ = json.Unmarshal(accountBytes, &state.Accounts)
 }
 
+// 合约名称是否存在
+func ContainsContract(name string) bool {
+	for _, a := range state.Accounts {
+		if a.Data.ContractName == name {
+			return true
+		}
+	}
+	return false
+}
+
 // 账户地址是否存在
 func ContainsAddress(address string) bool {
 	_, ok := state.Accounts[address]
 	return ok
 }
 
-// 获取账户信息
+// 通过地址获取账户信息
 func GetAccount(address string) meta.Account {
 	return state.Accounts[address]
+}
+
+// 通过合约名称获取账户信息
+func GetContractByName(name string) meta.Account {
+	for _, a := range state.Accounts {
+		if a.Data.ContractName == name {
+			return a
+		}
+	}
+	return meta.Account{}
 }
 
 // 获取所有的账户地址
@@ -124,25 +141,12 @@ func GetTotalAddress() []string {
 	return totalAddress
 }
 
-// 是否为普通账户地址
+// 是否为外部账户地址
 func IsOrdinaryAccount(address string) bool {
 	return !state.Accounts[address].IsContract
 }
 
-// 是否为智能合约账户账户地址
+// 是否为合约账户地址
 func IsContractAccount(address string) bool {
 	return state.Accounts[address].IsContract
-}
-
-// 生成合约地址（虽然合约地址不是由公私钥生成的）
-func generateContractAddress() string {
-	//首先生成公私钥
-	_, pubKey := util.GetKeyPair()
-	//账户地址
-	//将公钥进行hash
-	pubHash, _ := util.CalculateHash(pubKey)
-	//将公钥hash作为账户地址,256位
-	address := hex.EncodeToString(pubHash)
-	log.Infof("contract account address len: %d", len(address))
-	return address
 }

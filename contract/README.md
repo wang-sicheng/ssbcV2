@@ -10,7 +10,7 @@ import "github.com/ssbcV2/contract"
 func Call(name string, method string, args map[string]string) (interface{}, error)
 
 // 调用智能合约同时向合约转账
-func CallWithValue(name string, method string, args map[string]string) (interface{}, error)
+func CallWithValue(name string, method string, args map[string]string, value int) (interface{}, error)
 
 // 本次调用是谁发起的，即调用者地址（合约账户、外部账户）
 func Caller() string

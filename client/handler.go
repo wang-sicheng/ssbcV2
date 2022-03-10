@@ -67,7 +67,7 @@ func postContract(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
-	if account.ContainsAddress(contractName) {
+	if account.ContainsContract(contractName) {
 		log.Error("该合约已存在")
 		hr := errResponse("同名合约已存在")
 		ctx.JSON(http.StatusOK, hr)
@@ -94,7 +94,7 @@ func sendNewContract(c meta.ContractPost) {
 	data.Code = c.Code
 	t := meta.Transaction{
 		From:      c.Account,
-		To:        common.ContractDeployAddress,
+		To:        generateContractAddress(),
 		Dest:      "",
 		Contract:  c.Name,
 		Method:    "",
@@ -362,9 +362,6 @@ func postTran(ctx *gin.Context) {
 		Sign:      nil,
 		Type:      pt.Type,
 	}
-	if t.Type == meta.Invoke {
-		t.To = account.GetAccount(t.Contract).Address
-	}
 	//客户端在转发交易之前需要对交易进行签名
 	//先将交易进行hash
 	tByte, _ := json.Marshal(t)
@@ -549,4 +546,17 @@ func checkCrossTranParameters(pt *meta.PostCrossTran) (string, bool) {
 		return "接收地址不能为空", false
 	}
 	return "", true
+}
+
+// 生成合约地址（虽然合约地址不应该由公私钥生成）
+func generateContractAddress() string {
+	//首先生成公私钥
+	_, pubKey := util.GetKeyPair()
+	//账户地址
+	//将公钥进行hash
+	pubHash, _ := util.CalculateHash(pubKey)
+	//将公钥hash作为账户地址,256位
+	address := hex.EncodeToString(pubHash)
+	log.Infof("contract account address len: %d", len(address))
+	return address
 }

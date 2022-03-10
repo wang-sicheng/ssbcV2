@@ -61,8 +61,9 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 
 // 第一次调用合约前加载合约信息
 func SetContext(task meta.ContractTask) {
-	contractAccount := account.GetAccount(task.Name)
+	contractAccount := account.GetContractByName(task.Name)
 	curContext.Name = task.Name
+	curContext.Address = contractAccount.Address
 	curContext.Balance = contractAccount.Balance
 	curContext.Caller = task.Caller
 	curContext.Origin = task.Caller
@@ -76,15 +77,17 @@ func SetRecurContext(name string, method string, args map[string]string, value i
 		stack.Push(curContext) // context设置完毕，入栈
 		return
 	}
-	curContext.Caller = curContext.Name // 调用者为上一个合约
+	lastCon := account.GetContractByName(curContext.Name)
 
+	curContext.Caller = lastCon.Address // 调用者为上一个合约
 	curContext.Name = name
 	curContext.Method = method
 	curContext.Args = args
 	curContext.Value = value
 
-	contract := account.GetAccount(name)
+	contract := account.GetContractByName(name)
 	curContext.Balance = contract.Balance
+	curContext.Address = contract.Address
 
 	stack.Push(curContext) // context设置完毕，入栈
 }

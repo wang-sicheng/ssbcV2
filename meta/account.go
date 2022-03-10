@@ -5,7 +5,7 @@ import (
 	"github.com/rjkris/go-jellyfish-merkletree/common"
 )
 
-// 账户结构（普通账户和智能合约账户共用，通过IsContract字段区分）
+// 账户结构（外部账户和合约账户共用，通过IsContract字段区分）
 type Account struct {
 	Address    string      `json:"address"`    // 账户地址
 	Balance    int         `json:"balance"`    // 账户余额
