@@ -15,6 +15,7 @@ type Event struct {
 	Args          map[string]string
 	FromAddress   string   // 事件定义方
 	Subscriptions []string // 订阅方
+	ChainId string
 }
 
 type EventSub struct {

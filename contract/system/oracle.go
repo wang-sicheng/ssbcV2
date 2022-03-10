@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract" // 调用其他智能合约时引入
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/meta"
 )
 
@@ -15,10 +16,11 @@ func NewEvent(args map[string]string) (interface{}, error) {
 
 	event.FromAddress = contract.Caller()
 	event.Args = args
-	eventType, ok := args["event_type"]
+	eventType, ok := args["eventType"]
 	if ok {
 		event.Type = eventType
 	}
+	event.ChainId = global.ChainID
 	res.Events = append(res.Events, event)
 	return res, nil
 }
@@ -40,7 +42,7 @@ func NewSub(args map[string]string) (interface{}, error) {
 	err := json.Unmarshal([]byte(cbStr), &cb)
 	if err != nil {
 		log.Errorf("callback unmarshal error: %s", err)
-		return nil, err
+		return meta.ContractUpdateData{}, err
 	}
 	log.Infof("newSub callback info: %+v", cb)
 	sub.EventID = eid
@@ -50,8 +52,14 @@ func NewSub(args map[string]string) (interface{}, error) {
 }
 
 /*
-type: 请求类型（api,chain）
+type: api
 url: 数据url
+callback: 回调函数
+
+type: chain
+name: 数据链链名
+dataType: 跨链数据类型
+params: 查询参数
 callback: 回调函数
 */
 func QueryData(args map[string]string) (interface{}, error) {
@@ -62,17 +70,32 @@ func QueryData(args map[string]string) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("miss type args")
 	}
-	url, ok := args["url"]
-	if !ok {
-		return nil, errors.New("miss url args")
-	}
-	eventArgs["url"] = url
 
 	switch qType {
 	case "api":
-		eventArgs["event_type"] = "1"
+		eventArgs["eventType"] = "1"
+		url, ok := args["url"]
+		if !ok {
+			return nil, errors.New("miss url args")
+		}
+		eventArgs["url"] = url
 	case "chain":
-		eventArgs["event_type"] = "2"
+		eventArgs["eventType"] = "2"
+		name, ok := args["name"]
+		if !ok {
+			return nil, errors.New("miss name args")
+		}
+		eventArgs["name"] = name
+		dataType, ok := args["dataType"]
+		if !ok {
+			return nil, errors.New("miss dataType args")
+		}
+		eventArgs["dataType"] = dataType
+		params, ok := args["params"]
+		if !ok {
+			return nil, errors.New("miss params args")
+		}
+		eventArgs["params"] = params
 	}
 
 	callback, ok := args["callback"]
@@ -103,5 +126,5 @@ func QueryData(args map[string]string) (interface{}, error) {
 
 // 回退函数，当没有方法匹配时执行此方法
 func Fallback(args map[string]string) (interface{}, error) {
-	return nil, nil
+	return meta.ContractUpdateData{}, nil
 }

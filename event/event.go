@@ -94,6 +94,10 @@ func HandleContractTask() error {
 		log.Info(err)
 		return err
 	}
+	if res == nil {
+		log.Infof("合约执行结果为空：%s, %s", task.Name, task.Method)
+		return nil
+	}
 	data, ok := res.(meta.ContractUpdateData)
 	if !ok {
 		log.Error("contract update data decode error")
