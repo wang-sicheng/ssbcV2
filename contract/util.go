@@ -13,7 +13,7 @@ import (
 )
 
 // 将智能合约编译成动态库
-func GoBuildPlugin(contractName string) (err error, errStr string) {
+func GoBuildPlugin(contractName string) error {
 	var output bytes.Buffer
 
 	// 执行编译命令
@@ -21,15 +21,12 @@ func GoBuildPlugin(contractName string) (err error, errStr string) {
 	log.Infof("node id: %s", global.NodeID)
 	cmd.Dir = "./contract/contract/" + global.NodeID + "/" + contractName
 	cmd.Stderr = &output
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
-		log.Info(output.String())
-		log.Error(err)
-		return err, output.String()
-	} else {
-		log.Info(output.String())
+		log.Info("合约部署错误: " + err.Error())
+		return err
 	}
-	return nil, ""
+	return nil
 }
 
 func execute(name, method string, args map[string]string) (interface{}, error) {

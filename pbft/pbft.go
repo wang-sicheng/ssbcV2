@@ -689,12 +689,12 @@ func (p *pbft) deployContract(name, code string) error {
 		defer destFile.Close()
 		_, _ = destFile.WriteString(code)
 
-		err, _ = contract.GoBuildPlugin(name)
+		err = contract.GoBuildPlugin(name)
 		if err != nil {
 			//将文件夹删除
-			err := os.RemoveAll(dir)
-			if err != nil {
-				log.Error(err)
+			err1 := os.RemoveAll(dir)
+			if err1 != nil {
+				log.Error(err1)
 			}
 			return err
 		}
