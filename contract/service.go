@@ -57,7 +57,9 @@ func Call(name string, method string, args map[string]string) (interface{}, erro
 
 	defer func() {
 		stack.Pop()
-		curContext = stack.Top() // CallContract结束后获取上一层context
+		if !stack.IsEmpty() {
+			curContext = stack.Top() // Call结束后获取上一层context
+		}
 	}()
 
 	res, err := execute(name, method, args)
@@ -80,7 +82,9 @@ func CallWithValue(name string, method string, args map[string]string, value int
 
 	defer func() {
 		stack.Pop()
-		curContext = stack.Top() // CallContract结束后获取上一层context
+		if !stack.IsEmpty() {
+			curContext = stack.Top() // Call结束后获取上一层context
+		}
 	}()
 
 	res, err := execute(name, method, args)
