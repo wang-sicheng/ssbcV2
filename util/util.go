@@ -3,8 +3,12 @@ package util
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/meta"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"math/big"
 	"net"
 	"os"
@@ -63,4 +67,25 @@ func TCPSend(msg meta.TCPMessage, addr string) {
 	if err != nil {
 		log.Error(err)
 	}
+}
+
+// 获取 code 中所有方法
+func GetAllMethods(code string) []string {
+	set := token.NewFileSet()
+	f, err := parser.ParseFile(set, "", code, 0)
+	if err != nil {
+		fmt.Println("Failed to parse code:", err)
+		return []string{}
+	}
+
+	methods := []string{}
+
+	for _, d := range f.Decls {
+		if fn, isFn := d.(*ast.FuncDecl); isFn {
+			methods = append(methods, fn.Name.String())
+		}
+	}
+
+	log.Infof("合约的全部方法: %+v\n", methods)
+	return methods
 }
