@@ -14,7 +14,7 @@ func NewRequest(args map[string]string) (interface{}, error) {
 	cb := meta.Callback{
 		Caller:   "",
 		Value:    0,
-		Contract: "pullData",
+		Contract: contract.Name(),
 		Method:   "UpdateData",
 		Args:     nil,
 		Address:  "",
@@ -66,7 +66,7 @@ func PullChainData(args map[string]string) (interface{}, error) {
 	cb := meta.Callback{
 		Caller:   "",
 		Value:    0,
-		Contract: "pullData",
+		Contract: contract.Name(),
 		Method:   "UseChainData",
 		Args:     nil,
 		Address:  "",
