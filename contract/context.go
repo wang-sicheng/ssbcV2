@@ -3,7 +3,7 @@ package contract
 // 合约调用上下文
 type context struct {
 	Name    string            // 当前执行的合约的名称
-	Address string 			  // 合约地址
+	Address string            // 合约地址
 	Method  string            // 被调用的方法
 	Args    map[string]string // 参数
 	Balance int               // 合约账户的余额

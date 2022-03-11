@@ -36,7 +36,7 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 	}
 
 	dir := "./contract/contract/" + global.NodeID + "/" + name + "/"
-	log.Info("call contract: " + dir)
+
 	p, err := plugin.Open(dir + name + ".so")
 	if err != nil {
 		return nil, err
@@ -62,32 +62,38 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 // 第一次调用合约前加载合约信息
 func SetContext(task meta.ContractTask) {
 	contractAccount := account.GetContractByName(task.Name)
-	curContext.Name = task.Name
-	curContext.Address = contractAccount.Address
-	curContext.Balance = contractAccount.Balance
-	curContext.Caller = task.Caller
-	curContext.Origin = task.Caller
-	curContext.Value = task.Value
-	curContext.Method = task.Method
+
+	curContext = context{
+		Name:    task.Name,
+		Address: contractAccount.Address,
+		Method:  task.Method,
+		Args:    task.Args,
+		Balance: contractAccount.Balance,
+		Caller:  task.Caller,
+		Origin:  task.Caller,
+		Value:   task.Value,
+	}
 }
 
 // 合约调用合约时设置合约信息
 func SetRecurContext(name string, method string, args map[string]string, value int) {
-	if len(stack.contexts) == 0 { // 用户调用合约时（第一次调用）不执行该函数
+	if len(stack.contexts) == 0 { // 用户调用合约时（第一次调用）context已经设置好
 		stack.Push(curContext) // context设置完毕，入栈
 		return
 	}
-	lastCon := account.GetContractByName(curContext.Name)
+	currContract := account.GetContractByName(curContext.Name) // 当前合约账户信息
+	nextContract := account.GetContractByName(name)            // 即将被调合约账户信息
 
-	curContext.Caller = lastCon.Address // 调用者为上一个合约
-	curContext.Name = name
-	curContext.Method = method
-	curContext.Args = args
-	curContext.Value = value
-
-	contract := account.GetContractByName(name)
-	curContext.Balance = contract.Balance
-	curContext.Address = contract.Address
+	curContext = context{
+		Name:    name,
+		Address: nextContract.Address,
+		Method:  method,
+		Args:    args,
+		Balance: nextContract.Balance,
+		Caller:  currContract.Address, // 调用者为当前合约
+		Origin:  curContext.Origin,
+		Value:   value,
+	}
 
 	stack.Push(curContext) // context设置完毕，入栈
 }
