@@ -23,6 +23,13 @@ type AccountData struct {
 	Methods    []string `json:"methods"`	  // 合约的方法
 }
 
+// 预言机上注册的联盟链账户信息
+type ChainAccount struct {
+	AccountAddress string
+	PublicKey string
+	PrivateKey string
+}
+
 func (ac Account) GetKey() common.HashValue {
 	keyBytes, _ := hex.DecodeString(ac.Address)
 	return common.BytesToHash(keyBytes)

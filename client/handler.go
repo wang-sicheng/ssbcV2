@@ -145,14 +145,10 @@ func registerAccount(ctx *gin.Context) {
 	//将公钥hash作为账户地址,256位
 	account := hex.EncodeToString(pubHash)
 	log.Infof("account address len: %d", len(account))
-	res := struct {
-		PrivateKey     string
-		PublicKey      string
-		AccountAddress string
-	}{
-		string(priKey),
-		string(pubKey),
-		account,
+	res := meta.ChainAccount{
+		AccountAddress: account,
+		PublicKey:      string(pubKey),
+		PrivateKey:     string(priKey),
 	}
 	// client 存储账户的私钥
 	levelDB.DBPut(account+common.AccountsPrivateKeySuffix, priKey)

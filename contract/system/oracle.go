@@ -124,6 +124,60 @@ func QueryData(args map[string]string) (interface{}, error) {
 	return res, nil
 }
 
+/*
+type: "chain"
+chainName: 链名
+address: 合约地址
+contract: 合约名
+function: 方法名
+tData: 传输的数据
+*/
+func TransferData(args map[string]string) (interface{}, error) {
+	var res meta.ContractUpdateData
+	eType, ok := args["type"]
+	eventArgs := make(map[string]string)
+	if !ok {
+		return nil, errors.New("miss type args")
+	}
+	switch eType {
+	case "chain":
+		eventArgs["eventType"] = "3"
+		name, ok := args["chainName"]
+		if !ok {
+			return nil, errors.New("miss chainName args")
+		}
+		eventArgs["chainName"] = name
+		cont, ok := args["contract"]
+		if !ok {
+			return nil, errors.New("miss contract args")
+		}
+		eventArgs["contract"] = cont
+		function, ok := args["function"]
+		if !ok {
+			return nil, errors.New("miss function args")
+		}
+		eventArgs["function"] = function
+		data, ok := args["tData"]
+		if !ok {
+			return nil, errors.New("miss tData args")
+		}
+		eventArgs["tData"] = data
+		address, ok := args["address"]
+		if !ok {
+			return nil, errors.New("miss address args")
+		}
+		eventArgs["address"] = address
+	}
+	res1, err := contract.Call("oracle", "NewEvent", eventArgs)
+	if err != nil {
+		log.Errorf("call newEvent contract error: %s", err)
+		return nil, err
+	}
+	res, _ = res1.(meta.ContractUpdateData)
+	return res, nil
+}
+
+
 // 回退函数，当没有方法匹配时执行此方法
 func Fallback(args map[string]string) (interface{}, error) {
 	return meta.ContractUpdateData{}, nil
