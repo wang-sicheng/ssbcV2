@@ -8,6 +8,7 @@ import (
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
@@ -260,6 +261,17 @@ func query(ctx *gin.Context) {
 		} else {
 			trans := bc.TX
 			response = goodResponse(trans)
+		}
+	case "contractData":  // 获取合约内的数据
+		name := q.Parameters[0]
+		target := q.Parameters[1]
+
+		res, err := contract.Get(name, target)
+		if err != nil {
+			response = errResponse("获取合约内数据失败")
+			log.Info("获取合约内数据失败", err)
+		} else {
+			response = goodResponse(res)
 		}
 	default:
 		log.Info("Query参数有误!")

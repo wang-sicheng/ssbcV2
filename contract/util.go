@@ -59,6 +59,31 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 	return a, nil
 }
 
+
+// 获取目标智能合约中的指定数据
+func Get(name string, target string) (map[string]interface{}, error) {
+	// 参数校验
+	if name == "" || target == "" {
+		return nil, errors.New("invalid get params")
+	}
+
+	dir := "./contract/contract/" + global.NodeID + "/" + name + "/"
+
+	p, err := plugin.Open(dir + name + ".so")
+	if err != nil {
+		return nil, err
+	}
+	f, err := p.Lookup(target)
+	if err != nil {
+		log.Infof("找不到数据：%v\n", target)
+		return nil, err
+	}
+	res := map[string]interface{}{}
+	res[target] = f
+
+	return res, nil
+}
+
 // 第一次调用合约前加载合约信息
 func SetContext(task meta.ContractTask) {
 	contractAccount := account.GetContractByName(task.Name)

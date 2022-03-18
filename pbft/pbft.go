@@ -215,7 +215,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 	index := len(bc)
 	p.transPool[index] = append(p.transPool[index], transList...)
 	//满足交易数则打包新区块
-	if len(p.transPool[index]) == common.TxsThreshold {
+	if len(p.transPool[index]) >= common.TxsThreshold {
 		//主节点接收到的交易已经到达阈值，打包新区块进行PBFT共识
 		newBlock := chain.GenerateNewBlock(p.transPool[index])
 		//主节点对打包区块进行签名
