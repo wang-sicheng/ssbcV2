@@ -36,7 +36,7 @@ func check(code string) (string, error) {
 
 // 静态代码检测
 func codeCheck() (string, error) {
-	cmd := exec.Command("gosec", "-exclude=G104", "tmp")
+	cmd := exec.Command("gosec", "-exclude=G104,G404", "tmp")
 	var stdin, stdout, stderr bytes.Buffer
 	cmd.Stdin = &stdin
 	cmd.Stdout = &stdout
