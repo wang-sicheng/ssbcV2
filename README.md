@@ -28,14 +28,17 @@ git clone https://github.com/wang-sicheng/visual-bctt
 
 * 安装gosec
 
-```go install github.com/securego/gosec/v2/cmd/gosec@latest```
+```
+go install github.com/securego/gosec/v2/cmd/gosec@latest
+```
 
 
 
 ## 启动
 * 构建
-
-``` go build ```
+``` 
+go build
+```
 
 * 单链：在根目录开启4个终端，分别运行4个节点和1个客户端
 ```
@@ -68,6 +71,11 @@ git clone https://github.com/wang-sicheng/visual-bctt
 ./ssbcV2 client2
 ```
 
+* 如果需要跨链数据传输，需要启动预言机，详情参考
+```
+https://github.com/rjkris/ssbcOracle
+```
+
 * 在根目录启动前端项目visual-bctt
 ```
 npm run dev
@@ -80,3 +88,7 @@ npm run dev
 ```
 ./ssbcV2 clear  # 删除数据
 ```
+
+* 出现异常情况
+1. 先删除数据 ./ssbcV2 clear
+2. 按顺序重启所有节点
