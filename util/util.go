@@ -69,13 +69,37 @@ func TCPSend(msg meta.TCPMessage, addr string) {
 	}
 }
 
-// 获取 code 中所有方法
-func GetAllMethods(code string) []string {
+// 从合约代码中解析出包名、方法、全局变量
+func ParseContract(code string) meta.ContractInfo {
 	set := token.NewFileSet()
 	f, err := parser.ParseFile(set, "", code, 0)
 	if err != nil {
 		fmt.Println("Failed to parse code:", err)
-		return []string{}
+		return meta.ContractInfo{}
+	}
+
+	decls := f.Decls
+	variables := []string{}
+	for _, decl := range decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		ast.Inspect(genDecl, func(n ast.Node) bool {
+			var s string
+			switch x := n.(type) {
+			case *ast.ValueSpec:
+				for _, vs := range x.Names {
+					if vs.Obj != nil && vs.Obj.Kind == ast.Var {
+						s = vs.Name
+					}
+					if s != "" {
+						variables = append(variables, s)
+					}
+				}
+			}
+			return true
+		})
 	}
 
 	methods := []string{}
@@ -86,8 +110,15 @@ func GetAllMethods(code string) []string {
 		}
 	}
 
+	log.Infof("包名: %v \n", f.Name)
+	log.Infof("合约的全部变量：%+v\n", variables)
 	log.Infof("合约的全部方法: %+v\n", methods)
-	return methods
+
+	return meta.ContractInfo{
+		Package:   f.Name.Name,
+		Variables: variables,
+		Methods:   methods,
+	}
 }
 
 func MapToJson(param map[string]string) string {

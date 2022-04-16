@@ -263,8 +263,13 @@ func query(ctx *gin.Context) {
 			response = goodResponse(trans)
 		}
 	case "contractData":  // 获取合约内的数据
+		if q.Parameters == nil || len(q.Parameters) < 2 {
+			response = errResponse("参数错误")
+			log.Info("获取合约内数据失败")
+			break
+		}
 		name := q.Parameters[0]
-		target := q.Parameters[1]
+		target := q.Parameters[1:]
 
 		res, err := contract.Get(name, target)
 		if err != nil {

@@ -40,7 +40,7 @@ func CreateAccount(address, publicKey string, balance int) meta.Account {
 }
 
 // 创建智能合约账户
-func CreateContract(name, address, code, publisher string, methods []string) meta.Account {
+func CreateContract(name, address, code, publisher string, contractInfo meta.ContractInfo) meta.Account {
 	contract := meta.Account{
 		Address: address,
 		Balance: 0,
@@ -48,7 +48,8 @@ func CreateContract(name, address, code, publisher string, methods []string) met
 			Code:         code,
 			ContractName: name,
 			Publisher:    publisher,
-			Methods:      methods,
+			Methods:      contractInfo.Methods,
+			Variables: 	  contractInfo.Variables,
 		},
 		IsContract: true,
 	}

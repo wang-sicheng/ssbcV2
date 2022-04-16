@@ -21,6 +21,7 @@ type AccountData struct {
 	ContractName string `json:"contractname"` // 合约名称
 	Publisher    string `json:"publisher"`    // 部署合约的外部账户地址
 	Methods    []string `json:"methods"`	  // 合约的方法
+	Variables  []string `json:"variables"`	  // 合约的所有全局变量
 }
 
 // 预言机上注册的联盟链账户信息

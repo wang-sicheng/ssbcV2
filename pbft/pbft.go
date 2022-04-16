@@ -504,8 +504,9 @@ func (p *pbft) execute(tx meta.Transaction) {
 			log.Error("节点部署合约出错: ", err)
 			return
 		}
-		methods := util.GetAllMethods(tx.Data.Code)
-		newAccount := account.CreateContract(tx.Contract, tx.To, tx.Data.Code, tx.From, methods)
+
+		contractInfo := util.ParseContract(tx.Data.Code)
+		newAccount := account.CreateContract(tx.Contract, tx.To, tx.Data.Code, tx.From, contractInfo)
 		global.ChangedAccounts = append(global.ChangedAccounts, newAccount)
 		//更新事件数据，每个节点都执行
 		contractName := tx.Contract

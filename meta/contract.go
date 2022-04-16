@@ -1,5 +1,11 @@
 package meta
 
+type ContractInfo struct {
+	Package   string   `json:"package"`		// 合约的包名
+	Variables []string `json:"variables"`	// 合约的所有变量
+	Methods   []string `json:"methods"`		// 合约的所有方法
+}
+
 type ContractPost struct {
 	Account    string `json:"account"`
 	PrivateKey string `json:"private_key"`

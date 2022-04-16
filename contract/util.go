@@ -61,9 +61,9 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 
 
 // 获取目标智能合约中的指定数据
-func Get(name string, target string) (map[string]interface{}, error) {
+func Get(name string, targets []string) (map[string]interface{}, error) {
 	// 参数校验
-	if name == "" || target == "" {
+	if name == "" || targets == nil || len(targets) == 0 {
 		return nil, errors.New("invalid get params")
 	}
 
@@ -73,14 +73,15 @@ func Get(name string, target string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := p.Lookup(target)
-	if err != nil {
-		log.Infof("找不到数据：%v\n", target)
-		return nil, err
-	}
 	res := map[string]interface{}{}
-	res[target] = f
-
+	for _, target := range targets {
+		f, err := p.Lookup(target)
+		if err != nil {
+			log.Infof("找不到数据：%v\n", target)
+			return res, err
+		}
+		res[target] = f
+	}
 	return res, nil
 }
 

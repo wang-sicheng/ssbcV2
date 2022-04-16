@@ -7,51 +7,51 @@ import (
 	"time"
 )
 
-var beneficiary string      // 拍卖受益人
-var highestBidder string    // 当前的最高出价人
-var auctionEnd time.Time    // 结束时间
-var ended bool              // 拍卖结束标记
-var bids = map[string]int{} // 所有竞拍者的出价
+var Beneficiary string      // 拍卖受益人
+var HighestBidder string    // 当前的最高出价人
+var AuctionEnd time.Time    // 结束时间
+var Ended bool              // 拍卖结束标记
+var Bids = map[string]int{} // 所有竞拍者的出价
 
 func init() {
-	beneficiary = contract.Caller()              // 受益人默认为发布合约的人
-	auctionEnd = time.Now().Add(time.Minute * 2) // 合约在发布两分钟后停止出价
+	Beneficiary = contract.Caller()              // 受益人默认为发布合约的人
+	AuctionEnd = time.Now().Add(time.Minute * 2) // 合约在发布两分钟后停止出价
 }
 
 func Bid(args map[string]string) (interface{}, error) {
-	if auctionEnd.Before(time.Now()) {
+	if AuctionEnd.Before(time.Now()) {
 		contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
 		log.Info("拍卖已结束")
 		return nil, errors.New("拍卖已结束")
 	}
 
-	if bids[contract.Caller()]+contract.Value() <= bids[highestBidder] {
+	if Bids[contract.Caller()]+contract.Value() <= Bids[HighestBidder] {
 		contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
 		log.Info("出价无效")
 		return nil, errors.New("出价无效")
 	}
 
-	highestBidder = contract.Caller()
-	bids[contract.Caller()] += contract.Value()
+	HighestBidder = contract.Caller()
+	Bids[contract.Caller()] += contract.Value()
 	return nil, nil
 }
 
 func End(args map[string]string) (interface{}, error) {
 	contract.Transfer(contract.Caller(), contract.Value()) // AuctionEnd方法不接受转账，退回
-	if auctionEnd.After(time.Now()) {
+	if AuctionEnd.After(time.Now()) {
 		log.Info("拍卖还未结束")
 		return nil, errors.New("拍卖还未结束")
 	}
 
-	if ended {
+	if Ended {
 		log.Info("重复调用ActionEnd")
 		return nil, errors.New("重复调用ActionEnd")
 	}
-	ended = true
+	Ended = true
 
-	contract.Transfer(beneficiary, bids[highestBidder]) // 最高出价人拍卖成功
-	for bidder, amount := range bids {
-		if bidder == highestBidder {
+	contract.Transfer(Beneficiary, Bids[HighestBidder]) // 最高出价人拍卖成功
+	for bidder, amount := range Bids {
+		if bidder == HighestBidder {
 			continue
 		}
 		contract.Transfer(bidder, amount) // 其他人拍卖失败，退回资金
