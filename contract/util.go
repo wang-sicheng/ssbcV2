@@ -49,12 +49,18 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 			log.Info("没有提供Fallback方法")
 			return nil, err
 		}
-		a, _ := f.(func(map[string]string) (interface{}, error))(args)
+		a, err := f.(func(map[string]string) (interface{}, error))(args)
+		if err != nil {
+			return nil, err
+		}
 		log.Infof("执行结果：%v\n", a)
 		return a, nil
 	}
 
-	a, _ := f.(func(map[string]string) (interface{}, error))(args)
+	a, err := f.(func(map[string]string) (interface{}, error))(args)
+	if err != nil {
+		return nil, err
+	}
 	log.Infof("执行结果：%v\n", a)
 	return a, nil
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/prometheus/common/log"
+	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/contract"
@@ -91,7 +91,7 @@ func HandleContractTask() error {
 	contract.SetContext(task) // 加载合约的相关信息，供合约内部使用
 	res, err := contract.Call(task.Name, task.Method, task.Args)
 	if err != nil {
-		log.Info(err)
+		log.Infof("合约执行错误：%v", err)
 		return err
 	}
 	if res == nil {

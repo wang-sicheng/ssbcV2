@@ -248,7 +248,7 @@ func query(ctx *gin.Context) {
 		response = goodResponse(all)
 
 	case "getOneBlockTxs": // 获取指定高度的区块的所有交易
-		h := ctx.Query("height")
+		h := q.Parameters[0]
 		hInt64, err := strconv.ParseInt(h, 10, 64)
 		if err != nil {
 			log.Error("[getBlock],parseInt err:", err)

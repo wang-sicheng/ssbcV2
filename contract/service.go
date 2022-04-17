@@ -55,6 +55,19 @@ func Transfer(to string, amount int) error {
 	return nil
 }
 
+// 由 from 向 to 账户转账 （后续添加 Authorize()）
+func TransferFrom(from, to string, amount int) error {
+	if amount <= 0 {
+		return nil
+	}
+	if !account.CanTransfer(from, amount) {
+		return errors.New("合约账户余额不足，无法转账")
+	}
+	global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(from, amount))
+	global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(to, amount))
+	return nil
+}
+
 // 调用智能合约
 func Call(name string, method string, args map[string]string) (interface{}, error) {
 	log.Infof("调用 %v 合约的 %v() 方法\n", name, method)

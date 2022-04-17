@@ -9,25 +9,18 @@ import (
 	"github.com/ssbcV2/util"
 )
 
-var statistics map[string]interface{}		// 接收来自A链的统计数据
-var total int							// 要分发的总额度
-var amount int							// 众筹的总数额
-var ready bool							// 数据是否已经准备好
+var Statistics map[string]int         // 接收来自A链的统计数据
+var Publisher string				  // 合约发布人
+var Ready bool                        // 数据是否已经准备好
 
 func init() {
-	statistics = map[string]interface{}{}
-	total = contract.Value()
-	ready = false
-	amount = 0
-}
-
-func Add(args map[string]string) (interface{}, error) {
-	total += contract.Value()
-	return nil, nil
+	Statistics = map[string]int{}
+	Publisher = contract.Caller()
+	Ready = false
 }
 
 func GetCoin(args map[string]string) (interface{}, error) {
-	if !ready {
+	if !Ready {
 		cb := meta.Callback{
 			Caller:   "",
 			Value:    0,
@@ -67,17 +60,21 @@ func GetCoin(args map[string]string) (interface{}, error) {
 		return nil, errors.New("缺少a_addr参数")
 	}
 
-	if len(statistics) == 0 {
+	if len(Statistics) == 0 {
 		return nil, errors.New("没有数据或数据尚未准备好")
 	}
 
-	_, ok = statistics[a_addr]
+	amount, ok := Statistics[a_addr]
 	if !ok {
 		return nil, errors.New("A链地址不存在")
 	}
 
+	err := contract.TransferFrom(Publisher, contract.Caller(), amount)
+	if err != nil {
+		return nil, err
+	}
 
-	_ = contract.Transfer(contract.Caller(), 100)
+	Statistics[a_addr] = 0
 	return nil, nil
 }
 
@@ -93,20 +90,19 @@ func ReceiveData(args map[string]string) (interface{}, error) {
 		return meta.ContractUpdateData{}, err
 	}
 	log.Infof("ReceiveData 收到跨链数据：%s", data)
-	statistics = util.JsonToMap(data)
-	amount = totalMoney(statistics)
-	log.Infof("amount: %v\n", amount)
-	ready = true
+	Statistics = getStatistics(util.JsonToMap(data))
+	Ready = true
 	_, _ = contract.Call("oracle", "RecordEvent", recordArgs)
 	return nil, nil
 }
 
-func totalMoney(args map[string]interface{}) int {
+func getStatistics(args map[string]interface{}) map[string]int {
 	d := args["Money"].(map[string]interface{})
+	res := map[string]int{}
 
-	var tmp float64
-	for _, v := range d {
-		tmp += v.(float64)
+	for k, v := range d {
+		tmp := v.(float64)
+		res[k] = int(tmp)
 	}
-	return int(tmp)
+	return res
 }
