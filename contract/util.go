@@ -78,7 +78,7 @@ func Get(name string, targets []string) (map[string]interface{}, error) {
 		f, err := p.Lookup(target)
 		if err != nil {
 			log.Infof("找不到数据：%v\n", target)
-			return res, err
+			continue
 		}
 		res[target] = f
 	}
