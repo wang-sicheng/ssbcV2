@@ -6,6 +6,7 @@ import (
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/client"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/event"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/merkle"
@@ -46,7 +47,8 @@ func main() {
 
 	// 从levelDB读取账户信息（必须在数据库建立连接后，所以不能在init()完成）
 	account.GetFromDisk()
-
+	// 从levelDB初始化事件和订阅数据
+	event.InitEventData()
 	rootDir, _ := os.Getwd()
 	global.RootDir = rootDir // 记录项目根目录
 	global.NodeID = nodeID

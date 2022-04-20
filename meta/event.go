@@ -9,8 +9,24 @@ type JFTreeData interface {
 	GetKey() common.HashValue
 }
 
+// 用于前端展示
+type EventInfo struct {
+	Type          string // 0:内部事件;1:pull-api事件;2:pull-跨链事件;3:push事件;4:订阅
+	EventID       string
+	Args          map[string]string // 事件参数
+	FromAddress   string   // 定义方
+	Subscriptions []string // 订阅方
+	ChainId string // push目标链
+
+	SubID       string
+	ContractName       string // 回调合约名
+	ContractMethod   string // 回调合约方法
+	Total       int      // 触发数量
+	Useful      bool     // 是否生效
+}
+
 type Event struct {
-	Type          string // 0:日志记录;1:api;2:跨链;3:事件外传
+	Type          string // 0:内部事件;1:pull-api事件;2:pull-跨链事件;3:push事件
 	EventID       string
 	Args          map[string]string
 	FromAddress   string   // 事件定义方

@@ -509,9 +509,9 @@ func (p *pbft) execute(tx meta.Transaction) {
 		newAccount := account.CreateContract(tx.Contract, tx.To, tx.Data.Code, tx.From, contractInfo)
 		global.ChangedAccounts = append(global.ChangedAccounts, newAccount)
 		//更新事件数据，每个节点都执行
-		contractName := tx.Contract
-		eList, _ := event.ExecuteInitEvent(contractName, newAccount.Address, tx.From)
-		global.TreeData = append(global.TreeData, eList...)
+		//contractName := tx.Contract
+		//eList, _ := event.ExecuteInitEvent(contractName, newAccount.Address, tx.From)
+		//global.TreeData = append(global.TreeData, eList...)
 	case meta.Invoke:
 		// 调用合约的同时向合约账户转账
 		if tx.Value > 0 {

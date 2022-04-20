@@ -9,6 +9,7 @@ import (
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/contract"
+	"github.com/ssbcV2/event"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
@@ -278,6 +279,9 @@ func query(ctx *gin.Context) {
 		} else {
 			response = goodResponse(res)
 		}
+	case "getEvent":
+		data, _ := event.GetAllEventData()
+		response = goodResponse(data)
 	default:
 		log.Info("Query参数有误!")
 		response = errResponse("Query参数有误!")

@@ -15,10 +15,17 @@ import (
 	"github.com/ssbcV2/util"
 )
 
+// 事件树状态数据
 var EventData map[string]meta.JFTreeData
+// 事件数据
+var EventDbInfo map[string]meta.Event
+// 订阅数据
+var SubDbInfo map[string]meta.EventSub
 
 func init() {
 	EventData = map[string]meta.JFTreeData{}
+	EventDbInfo = map[string]meta.Event{}
+	SubDbInfo = map[string]meta.EventSub{}
 }
 
 func IsContainsKey(key string) bool {
@@ -26,15 +33,58 @@ func IsContainsKey(key string) bool {
 	return ok
 }
 
+func IsContainsEventKey(key string) bool {
+	_, ok := EventDbInfo[key]
+	return ok
+}
+
+func IsContainsSubKey(key string) bool {
+	_, ok := SubDbInfo[key]
+	return ok
+}
+
 func InitEventData() {
-	dataBytes := levelDB.DBGet(common.EventAllDataKey)
-	_ = json.Unmarshal(dataBytes, &EventData)
+	eventBytes := levelDB.DBGet(common.EventKey)
+	if len(eventBytes) != 0 {
+		err := json.Unmarshal(eventBytes, &EventDbInfo)
+		if err != nil {
+			log.Errorf("事件数据解析失败：%s", err)
+			return
+		}
+	}
+	subBytes := levelDB.DBGet(common.EventSubKey)
+	if len(subBytes) != 0 {
+		err := json.Unmarshal(subBytes, &SubDbInfo)
+		if err != nil {
+			log.Errorf("订阅数据解析失败：%s", err)
+			return
+		}
+	}
+	for id, e := range EventDbInfo {
+		EventData[id] = e
+	}
+	for id, s := range SubDbInfo {
+		EventData[id] = s
+	}
 }
 
 func UpdateToLevelDB(data map[string]meta.JFTreeData) {
-	dataBytes, _ := json.Marshal(data)
-	log.Infof("事件状态信息已更新至leveldb: %+v", data)
-	levelDB.DBPut(common.EventAllDataKey, dataBytes)
+	for id, info := range data {
+		event, ok := info.(meta.Event)
+		if ok {
+			EventDbInfo[id] = event
+		}
+		sub, ok := info.(meta.EventSub)
+		if ok {
+			SubDbInfo[id] = sub
+		}
+	}
+	eventBytes, _ := json.Marshal(EventDbInfo)
+	subBytes, _ := json.Marshal(SubDbInfo)
+	levelDB.DBPut(common.EventKey, eventBytes)
+	levelDB.DBPut(common.EventSubKey, subBytes)
+	log.Infof("事件数据已更新至leveldb: %+v", EventDbInfo)
+	log.Infof("订阅数据已更新至leveldb: %+v", SubDbInfo)
 }
 
 // 将事件消息转换成需要上链的交易
@@ -78,7 +128,11 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 			Type:      meta.Invoke,
 		})
 		log.Infof("事件消息转换交易列表: %+v", trans)
+		// 更新订阅信息
+		sub.Total ++
+		EventData[subKey] = sub
 	}
+	UpdateToLevelDB(EventData)
 	return trans, nil
 }
 
@@ -215,7 +269,7 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 			}
 			log.Infof("注册事件成功: %+v", tarEvent)
 		} else {
-			if !IsContainsKey(eid) { // 要订阅的事件不存在
+			if !IsContainsEventKey(eid){ // 要订阅的事件不存在
 				log.Errorf("the event to sub is not exist: %s", eid)
 				continue
 			}
@@ -224,6 +278,7 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		subHash, _ := util.CalculateHash([]byte(from + string(curSeq)))
 		subs[index].SubID = hex.EncodeToString(subHash)
 		subs[index].FromAddress = from
+		subs[index].Useful = true
 		edata, _ := EventData[eid].(meta.Event)
 		edata.Subscriptions = append(edata.Subscriptions, subs[index].SubID) // 更新事件的订阅信息
 		log.Infof("订阅信息注册成功: %+v", subs[index])
@@ -247,6 +302,49 @@ func pushEventToRedis(event meta.Event) error {
 	log.Infof("事件输出到队列: %+v", event)
 	return nil
 }
+
+func GetAllEventData() ([]meta.EventInfo, error) {
+	EventBytes := levelDB.DBGet(common.EventKey)
+	SubBytes := levelDB.DBGet(common.EventSubKey)
+	var eventMap map[string]meta.Event
+	var subMap map[string]meta.EventSub
+	var res []meta.EventInfo
+	if len(EventBytes) != 0 {
+		err := json.Unmarshal(EventBytes, &eventMap)
+		if err != nil {
+			log.Errorf("事件数据解析失败：%s", err)
+		}
+	}
+	if len(SubBytes) != 0 {
+		err := json.Unmarshal(SubBytes, &subMap)
+		if err != nil {
+			log.Errorf("订阅数据解析失败：%s", err)
+		}
+	}
+	for _, e := range eventMap {
+		res = append(res, meta.EventInfo{
+			Type:          e.Type,
+			EventID:       e.EventID,
+			Args:          e.Args,
+			FromAddress:   e.FromAddress,
+			Subscriptions: e.Subscriptions,
+			ChainId:       e.ChainId,
+		})
+	}
+	for _, s := range subMap {
+		res = append(res, meta.EventInfo{
+			Type:           "4",
+			EventID:        s.EventID,
+			FromAddress:    s.FromAddress,
+			SubID:          s.SubID,
+			ContractName:   s.Callback.Contract,
+			ContractMethod: s.Callback.Method,
+			Total:          s.Total,
+		})
+	}
+	return res, nil
+}
+
 
 //func UpdateEventData(name string, address string, from string) ([]meta.JFTreeData, error) {
 //	var args map[string]string
