@@ -237,6 +237,7 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		return nil, errors.New("from address is not exist in db: " + from)
 	}
 	ac := account.GetAccount(from)
+
 	curSeq := ac.Seq
 	// 生成新的event
 	for index, _ := range events {
@@ -288,7 +289,9 @@ func UpdateEventData(data meta.ContractUpdateData, from string) ([]meta.JFTreeDa
 		treeDataList = append(treeDataList, subs[index]) // 更新到状态树
 		treeDataList = append(treeDataList, edata)
 	}
+	account.SeqIncrease(curSeq, from) // 更新from账户seq
 	UpdateToLevelDB(EventData)
+
 	return treeDataList, nil
 }
 

@@ -152,3 +152,9 @@ func IsOrdinaryAccount(address string) bool {
 func IsContractAccount(address string) bool {
 	return state.Accounts[address].IsContract
 }
+
+func SeqIncrease(seq int, address string) {
+	ac := state.Accounts[address]
+	ac.Seq = seq
+	state.Accounts[address] = ac
+}
