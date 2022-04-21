@@ -11,18 +11,18 @@ type JFTreeData interface {
 
 // 用于前端展示
 type EventInfo struct {
-	Type          string // 0:内部事件;1:pull-api事件;2:pull-跨链事件;3:push事件;4:订阅
-	EventID       string
-	Args          map[string]string // 事件参数
-	FromAddress   string   // 定义方
-	Subscriptions []string // 订阅方
-	ChainId string // push目标链
+	Type          string            `json:"type"`          // 0:内部事件;1:pull-api事件;2:pull-跨链事件;3:push事件;4:订阅
+	EventID       string            `json:"event_id"`      // 事件ID
+	Args          map[string]string `json:"args"`          // 事件参数
+	FromAddress   string            `json:"from_address"`  // 定义方
+	Subscriptions []string          `json:"subscriptions"` // 订阅方
+	ChainId       string            `json:"chain_id"`      // push目标链
 
-	SubID       string
-	ContractName       string // 回调合约名
-	ContractMethod   string // 回调合约方法
-	Total       int      // 触发数量
-	Useful      bool     // 是否生效
+	SubID          string `json:"sub_id"`          // 订阅ID
+	ContractName   string `json:"contract_name"`   // 回调合约名
+	ContractMethod string `json:"contract_method"` // 回调合约方法
+	Total          int    `json:"total"`           // 触发数量
+	Useful         bool   `json:"useful"`          // 是否生效
 }
 
 type Event struct {
