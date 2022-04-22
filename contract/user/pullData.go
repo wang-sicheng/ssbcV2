@@ -7,7 +7,7 @@ import (
 	"github.com/ssbcV2/meta"
 )
 
-var externalData string
+var ExternalData string
 
 // pull外部数据，回调updateData
 func NewRequest(args map[string]string) (interface{}, error) {
@@ -55,8 +55,8 @@ func UpdateData(args map[string]string) (interface{}, error) {
 		_, err := contract.Call("oracle", "RecordEvent", recordArgs)
 		return meta.ContractUpdateData{}, err
 	}
-	externalData = newData
-	log.Infof("externalData更新成功：%s", externalData)
+	ExternalData = newData
+	log.Infof("externalData更新成功：%s", ExternalData)
 	_, _ = contract.Call("oracle", "RecordEvent", recordArgs)
 	return meta.ContractUpdateData{}, nil
 }

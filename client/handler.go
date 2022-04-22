@@ -265,7 +265,7 @@ func query(ctx *gin.Context) {
 		}
 	case "contractData":  // 获取合约内的数据
 		if q.Parameters == nil || len(q.Parameters) < 2 {
-			response = errResponse("参数错误")
+			response = errResponseWithData("参数错误", map[string]interface{}{})	// 返回空的map，以便前端展示
 			log.Info("获取合约内数据失败")
 			break
 		}
@@ -483,6 +483,16 @@ func errResponse(errMsg string) meta.HttpResponse {
 	res := meta.HttpResponse{
 		Error: errMsg,
 		Data:  "",
+		Code:  20000,
+	}
+	return res
+}
+
+// 出现异常，返回异常信息
+func errResponseWithData(errMsg string, data interface{}) meta.HttpResponse {
+	res := meta.HttpResponse{
+		Error: errMsg,
+		Data:  data,
 		Code:  20000,
 	}
 	return res
