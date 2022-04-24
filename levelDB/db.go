@@ -11,14 +11,14 @@ var err error
 func InitDB(path string) {
 	db, err = leveldb.OpenFile("levelDB/db/path/"+path, nil)
 	if err != nil {
-		log.Error("db init err:", err)
+		log.Errorf("db init %s err: %v", path, err)
 	}
 }
 
 func DBGet(key string) []byte {
 	data, err := db.Get([]byte(key), nil)
 	if err != nil {
-		log.Error("db get err:", err)
+		log.Errorf("db get %s err: %v", key, err)
 		return nil
 	}
 	return data
@@ -27,13 +27,13 @@ func DBGet(key string) []byte {
 func DBPut(key string, value []byte) {
 	err = db.Put([]byte(key), value, nil)
 	if err != nil {
-		log.Error("db put err:", err)
+		log.Errorf("db put %s err: %v", key, err)
 	}
 }
 
 func DBDelete(key string) {
 	err = db.Delete([]byte(key), nil)
 	if err != nil {
-		log.Error("db delete err", err)
+		log.Errorf("db delete %s err: %v", key, err)
 	}
 }

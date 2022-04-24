@@ -311,7 +311,7 @@ func GetAllEventData() ([]meta.EventInfo, error) {
 	SubBytes := levelDB.DBGet(common.EventSubKey)
 	var eventMap map[string]meta.Event
 	var subMap map[string]meta.EventSub
-	var res []meta.EventInfo
+	res := []meta.EventInfo{}	// 初始化为空数组，而非nil，以便前端展示
 	if len(EventBytes) != 0 {
 		err := json.Unmarshal(EventBytes, &eventMap)
 		if err != nil {
