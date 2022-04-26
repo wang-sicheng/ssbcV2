@@ -42,6 +42,11 @@ func Name() string {
 	return curContext.Name
 }
 
+// 根据地址获取对应账户的余额
+func GetBalance(address string) int {
+	return account.GetAccount(address).Balance
+}
+
 // 当前合约向 to 账户转账
 func Transfer(to string, amount int) error {
 	if amount <= 0 {
