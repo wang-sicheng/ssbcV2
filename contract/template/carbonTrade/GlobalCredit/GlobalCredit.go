@@ -1,4 +1,4 @@
-package GlobalCredit
+package main
 
 
 import (

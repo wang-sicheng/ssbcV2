@@ -60,7 +60,10 @@ npm run dev
 sh clear.sh 
 ```
 
-* 出现异常情况，删除数据并重新启动
-```shell
-sh restart.sh
-```
+* 出现异常情况
+    * 查看 log 目录下的日志
+  
+    * 删除数据并重新启动
+    ```shell
+    sh restart.sh
+    ```

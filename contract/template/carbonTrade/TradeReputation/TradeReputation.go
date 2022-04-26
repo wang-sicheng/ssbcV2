@@ -1,4 +1,4 @@
-package TradeReputation
+package main
 
 import (
 	"encoding/json"

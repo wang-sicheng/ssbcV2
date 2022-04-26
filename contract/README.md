@@ -1,4 +1,5 @@
 #### 智能合约接口
+建议在后端项目ssbcV2/contract目录下编辑合约，之后再复制到前端编辑框内发布。
 
 在合约中需要引入 contract 包
 ```golang
@@ -27,6 +28,15 @@ func Self() string
 
 // 合约向账户 to 转账 amount 资产
 func Transfer(to string, amount int) (interface{}, error)
+
+// 合约操作 from 账户向 to 账户转账
+func TransferFrom(from, to string, amount int) error
+
+// 返回当前合约拥有多少资产
+func Balance() int
+
+// 根据地址获取对应账户的余额
+func GetBalance(address string) int
 ```
 
 #### 智能合约模板（golang plugin）
@@ -39,21 +49,26 @@ import (
 	"github.com/ssbcV2/contract" // 使用内置功能时引入
 )
 
+var Caller string   // 首字母大写对外可见，小写不可见，方法同理
+var Origin string
+var Value int
+var Balance int
+var Self string
+
 // 参数必须为 map[string]string, 返回结果必须为 (interface{}, error)
 func Multiply(args map[string]string) (interface{}, error) {
+	Caller = contract.Caller()
+	Origin = contract.Origin()
+	Value  = contract.Value()
+	Balance= contract.Balance()
+	Self   = contract.Self()
+
 	// 调用其他合约，自行封装参数
 	num, err := contract.Call("random", "GetRandom", map[string]string{})
 	if err != nil {
 		log.Infof("[Multiply] 调用random失败")
 		return nil, err
 	}
-	caller := contract.Caller()
-	origin := contract.Origin()
-	value  := contract.Value()
-	balance:= contract.Balance()
-	self   := contract.Self()
-	contract.Transfer(caller, value)
-	
 	a := num.(int)
 	log.Infof("[Multiply] 调用 random.GetRandom 成功，结果：%v\n", a)
 	ans := a * a
