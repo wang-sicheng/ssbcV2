@@ -20,7 +20,7 @@ go install github.com/securego/gosec/v2/cmd/gosec@latest
 
 ## 拉取代码并构建
 
-* 后端代码（plugin分支）（需要把后端项目放在 GOPATH的src目录底下，我的GOPATH是 /Users/wsc/Go，所以项目目录是 /Users/wsc/Go/ssbcV2）
+* 后端代码（plugin分支）（需要把后端项目放在 GOPATH的src目录底下，我的GOPATH是 /Users/wsc/Go，所以项目目录是 /Users/wsc/Go/src/ssbcV2）
 
 ```
 git clone https://github.com/wang-sicheng/ssbcV2
