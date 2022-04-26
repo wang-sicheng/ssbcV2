@@ -1,4 +1,4 @@
-package main
+package pushData
 
 import (
 	"encoding/json"

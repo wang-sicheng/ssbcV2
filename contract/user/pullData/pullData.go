@@ -1,4 +1,4 @@
-package main
+package pullData
 
 import (
 	"encoding/json"

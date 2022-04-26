@@ -1,4 +1,4 @@
-package main
+package auction
 
 import (
 	"errors"
