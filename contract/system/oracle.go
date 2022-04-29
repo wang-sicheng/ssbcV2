@@ -10,13 +10,13 @@ import (
 )
 
 // 定义事件函数
-func NewEvent(args map[string]string) (interface{}, error) {
+func NewEvent(args map[string]interface{}) (interface{}, error) {
 	var res meta.ContractUpdateData
 	var event meta.Event
 
 	event.FromAddress = contract.Caller()
 	event.Args = args
-	eventType, ok := args["eventType"]
+	eventType, ok := args["eventType"].(string)
 	if ok {
 		event.Type = eventType
 	}
@@ -26,15 +26,15 @@ func NewEvent(args map[string]string) (interface{}, error) {
 }
 
 // 定义订阅函数
-func NewSub(args map[string]string) (interface{}, error) {
+func NewSub(args map[string]interface{}) (interface{}, error) {
 	var res meta.ContractUpdateData
 	var sub meta.EventSub
 	sub.FromAddress = contract.Caller()
-	eid, ok := args["event_id"]
+	eid, ok := args["event_id"].(string)
 	if ok {
 		sub.EventID = eid // 不是必须，也可以自定义targetEvent
 	}
-	cbStr, ok := args["callback"]
+	cbStr, ok := args["callback"].(string)
 	if !ok {
 		return nil, errors.New("miss callback field")
 	}
@@ -62,11 +62,11 @@ dataType: 跨链数据类型
 params: 查询参数
 callback: 回调函数
 */
-func QueryData(args map[string]string) (interface{}, error) {
+func QueryData(args map[string]interface{}) (interface{}, error) {
 	var res meta.ContractUpdateData
 	qType, ok := args["type"] // 查询类型，对应生成不同的事件类型
-	eventArgs := make(map[string]string)
-	subArgs := make(map[string]string)
+	eventArgs := make(map[string]interface{})
+	subArgs := make(map[string]interface{})
 	if !ok {
 		return nil, errors.New("miss type args")
 	}
@@ -74,31 +74,31 @@ func QueryData(args map[string]string) (interface{}, error) {
 	switch qType {
 	case "api":
 		eventArgs["eventType"] = "1"
-		url, ok := args["url"]
+		url, ok := args["url"].(string)
 		if !ok {
 			return nil, errors.New("miss url args")
 		}
 		eventArgs["url"] = url
 	case "chain":
 		eventArgs["eventType"] = "2"
-		name, ok := args["name"]
+		name, ok := args["name"].(string)
 		if !ok {
 			return nil, errors.New("miss name args")
 		}
 		eventArgs["name"] = name
-		dataType, ok := args["dataType"]
+		dataType, ok := args["dataType"].(string)
 		if !ok {
 			return nil, errors.New("miss dataType args")
 		}
 		eventArgs["dataType"] = dataType
-		params, ok := args["params"]
+		params, ok := args["params"].(string)
 		if !ok {
 			return nil, errors.New("miss params args")
 		}
 		eventArgs["params"] = params
 	}
 
-	callback, ok := args["callback"]
+	callback, ok := args["callback"].(string)
 	if !ok {
 		return nil, errors.New("miss callback args")
 	}
@@ -132,10 +132,10 @@ contract: 合约名
 function: 方法名
 tData: 传输的数据
 */
-func TransferData(args map[string]string) (interface{}, error) {
+func TransferData(args map[string]interface{}) (interface{}, error) {
 	var res meta.ContractUpdateData
 	eType, ok := args["type"]
-	eventArgs := make(map[string]string)
+	eventArgs := make(map[string]interface{})
 	if !ok {
 		return nil, errors.New("miss type args")
 	}
@@ -179,6 +179,6 @@ func TransferData(args map[string]string) (interface{}, error) {
 
 
 // 回退函数，当没有方法匹配时执行此方法
-func Fallback(args map[string]string) (interface{}, error) {
+func Fallback(args map[string]interface{}) (interface{}, error) {
 	return meta.ContractUpdateData{}, nil
 }

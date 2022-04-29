@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/account"
@@ -74,7 +75,7 @@ func TransferFrom(from, to string, amount int) error {
 }
 
 // 调用智能合约
-func Call(name string, method string, args map[string]string) (interface{}, error) {
+func Call(name string, method string, args map[string]interface{}) (interface{}, error) {
 	log.Infof("调用 %v 合约的 %v() 方法\n", name, method)
 	SetRecurContext(name, method, args, 0)
 	PrintContext()
@@ -94,7 +95,7 @@ func Call(name string, method string, args map[string]string) (interface{}, erro
 }
 
 // 调用智能合约的同时向合约转账
-func CallWithValue(name string, method string, args map[string]string, value int) (interface{}, error) {
+func CallWithValue(name string, method string, args map[string]interface{}, value int) (interface{}, error) {
 	log.Infof("调用 %v 合约的 %v() 方法\n", name, method)
 	targetAcc := account.GetContractByName(name)
 	err := Transfer(targetAcc.Address, value) // 向合约转账
@@ -117,4 +118,37 @@ func CallWithValue(name string, method string, args map[string]string, value int
 		return nil, err
 	}
 	return res, err
+}
+
+// 调用目标链的合约，结果通过回调函数传入
+func CrossCall(sourceContract, targetChain, targetContract, method string, args map[string]interface{}, callback string) (interface{}, error) {
+	argsBytes , _ := json.Marshal(args)
+	argsStr := string(argsBytes)
+
+	data := map[string]string{
+		"sourceChain": global.ChainID,
+		//"targetChain": targetContract,
+		"caller": Caller(),
+		"sourceContract": sourceContract,
+		"targetContract": targetContract,
+		"method": method,
+		"args": argsStr,
+		"callback": callback,
+	}
+	tdataBytes, _ := json.Marshal(data)
+	reqArgs := map[string]interface{}{
+		"type": "chain",
+		"chainName": targetChain,
+		"contract": "cross",
+		"function": "Call",
+		"tData": string(tdataBytes),
+		"address": "",
+	}
+
+	res, err := Call("oracle", "TransferData", reqArgs)
+	if err != nil {
+		log.Errorf("CrossCall调用TransferData预言机合约失败：%s", err)
+		return nil, err
+	}
+	return res, nil
 }

@@ -16,7 +16,7 @@ func init() {
 	Ended = false
 }
 
-func Deposit(args map[string]string) (interface{}, error) {
+func Deposit(args map[string]interface{}) (interface{}, error) {
 	if Ended {
 		_ = contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
 		log.Info("众筹已结束")
@@ -26,7 +26,7 @@ func Deposit(args map[string]string) (interface{}, error) {
 	return nil, nil
 }
 
-func End(args map[string]string) (interface{}, error) {
+func End(args map[string]interface{}) (interface{}, error) {
 	_ = contract.Transfer(contract.Caller(), contract.Value()) // End方法不接受转账，退回
 	if Publisher != contract.Caller() {
 		log.Info("非合约发布者，无法结束众筹")

@@ -19,7 +19,7 @@ func init() {
 	Ready = false
 }
 
-func GetCoin(args map[string]string) (interface{}, error) {
+func GetCoin(args map[string]interface{}) (interface{}, error) {
 	if !Ready {
 		cb := meta.Callback{
 			Caller:   "",
@@ -30,7 +30,7 @@ func GetCoin(args map[string]string) (interface{}, error) {
 			Address:  "",
 		}
 		cbBytes, _ := json.Marshal(cb)
-		reqArgs := map[string]string{
+		reqArgs := map[string]interface{}{
 			"type":     "chain", // "api":第三方接口，"chain":"跨链数据"
 			"callback": string(cbBytes),
 			"name": "ssbc2",
@@ -38,7 +38,7 @@ func GetCoin(args map[string]string) (interface{}, error) {
 			"params": "deposit,Money",
 		}
 		// 日志事件
-		recordArgs := map[string]string{
+		recordArgs := map[string]interface{}{
 			"state": "success",
 		}
 		// 调用QueryData预言机合约请求外部数据
@@ -55,7 +55,7 @@ func GetCoin(args map[string]string) (interface{}, error) {
 		return res, nil
 	}
 
-	a_addr, ok := args["a_addr"]
+	a_addr, ok := args["a_addr"].(string)
 	if !ok {
 		return nil, errors.New("缺少a_addr参数")
 	}
@@ -78,12 +78,13 @@ func GetCoin(args map[string]string) (interface{}, error) {
 	return nil, nil
 }
 
-func ReceiveData(args map[string]string) (interface{}, error) {
-	recordArgs := map[string]string{
+func ReceiveData(args map[string]interface{}) (interface{}, error) {
+	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
 	log.Infof("ReceiveData 方法收到参数：%+v", args)
-	data, ok := args["data"]
+
+	data, ok := args["data"].(string)
 	if !ok {
 		recordArgs["state"] = "fail"
 		_, err := contract.Call("oracle", "RecordEvent", recordArgs)

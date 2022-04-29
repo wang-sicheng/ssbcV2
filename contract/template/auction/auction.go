@@ -18,7 +18,7 @@ func init() {
 	AuctionEnd = time.Now().Add(time.Minute * 2) // 合约在发布两分钟后停止出价
 }
 
-func Bid(args map[string]string) (interface{}, error) {
+func Bid(args map[string]interface{}) (interface{}, error) {
 	if AuctionEnd.Before(time.Now()) {
 		contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
 		log.Info("拍卖已结束")
@@ -36,7 +36,7 @@ func Bid(args map[string]string) (interface{}, error) {
 	return nil, nil
 }
 
-func End(args map[string]string) (interface{}, error) {
+func End(args map[string]interface{}) (interface{}, error) {
 	contract.Transfer(contract.Caller(), contract.Value()) // AuctionEnd方法不接受转账，退回
 	if AuctionEnd.After(time.Now()) {
 		log.Info("拍卖还未结束")
@@ -60,7 +60,7 @@ func End(args map[string]string) (interface{}, error) {
 }
 
 // 回退函数，当没有方法匹配时执行此方法
-func Fallback(args map[string]string) (interface{}, error) {
+func Fallback(args map[string]interface{}) (interface{}, error) {
 	contract.Transfer(contract.Caller(), contract.Value()) // 将转账退回
 	return nil, nil
 }

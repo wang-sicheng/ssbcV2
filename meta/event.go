@@ -13,7 +13,7 @@ type JFTreeData interface {
 type EventInfo struct {
 	Type          string            `json:"type"`          // 0:内部事件;1:pull-api事件;2:pull-跨链事件;3:push事件;4:订阅
 	EventID       string            `json:"event_id"`      // 事件ID
-	Args          map[string]string `json:"args"`          // 事件参数
+	Args          map[string]interface{} `json:"args"`          // 事件参数
 	FromAddress   string            `json:"from_address"`  // 定义方
 	Subscriptions []string          `json:"subscriptions"` // 订阅方
 	ChainId       string            `json:"chain_id"`      // push目标链
@@ -28,7 +28,7 @@ type EventInfo struct {
 type Event struct {
 	Type          string // 0:内部事件;1:pull-api事件;2:pull-跨链事件;3:push事件
 	EventID       string
-	Args          map[string]string
+	Args          map[string]interface{}
 	FromAddress   string   // 事件定义方
 	Subscriptions []string // 订阅方
 	ChainId string
@@ -49,7 +49,7 @@ type EventSub struct {
 type EventMessage struct {
 	From      string
 	EventID   string
-	Data      map[string]string
+	Data      map[string]interface{}
 	Sign      []byte
 	PublicKey string
 	TimeStamp string
@@ -61,7 +61,7 @@ type Callback struct {
 	Value    int    // 调用合约的转账金额
 	Contract string
 	Method   string
-	Args     map[string]string
+	Args     map[string]interface{}
 	Address  string // 合约地址
 }
 

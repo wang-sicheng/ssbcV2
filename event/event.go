@@ -106,7 +106,7 @@ func EventToTransaction(message meta.EventMessage) ([]meta.Transaction, error) {
 		sub, ok := subValue.(meta.EventSub)
 		contractArgs := sub.Callback.Args
 		if len(contractArgs) == 0 { // 初始化
-			contractArgs = make(map[string]string)
+			contractArgs = make(map[string]interface{})
 		}
 		for k, v := range message.Data { // 增加来自event message的参数
 			contractArgs[k] = v
@@ -203,7 +203,7 @@ func HandleContractTask() error {
 // address:合约地址，from:部署合约的外部账户地址
 // 暂时不考虑订阅当前智能合约
 func ExecuteInitEvent(name string, address string, from string) ([]meta.JFTreeData, error) {
-	var args map[string]string
+	var args map[string]interface{}
 
 	contract.SetContext(meta.ContractTask{
 		Caller: from,
@@ -350,7 +350,7 @@ func GetAllEventData() ([]meta.EventInfo, error) {
 
 
 //func UpdateEventData(name string, address string, from string) ([]meta.JFTreeData, error) {
-//	var args map[string]string
+//	var args map[string]interface{}
 //	var treeDataList []meta.JFTreeData
 //	res, err := contract.Call(name, "initEvent", args) // 事件数据在智能合约中的initEvent函数中定义
 //	if err != nil {

@@ -26,5 +26,5 @@ type ContractTask struct {
 	Value  int               // 外部账户调用合约交易的转账金额
 	Name   string            // 合约名称
 	Method string            // 方法
-	Args   map[string]string // 参数
+	Args   map[string]interface{} // 参数
 }

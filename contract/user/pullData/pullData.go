@@ -7,10 +7,10 @@ import (
 	"github.com/ssbcV2/meta"
 )
 
-var ExternalData string
+var ExternalData interface{}
 
 // pull外部数据，回调updateData
-func NewRequest(args map[string]string) (interface{}, error) {
+func NewRequest(args map[string]interface{}) (interface{}, error) {
 	cb := meta.Callback{
 		Caller:   "",
 		Value:    0,
@@ -20,13 +20,13 @@ func NewRequest(args map[string]string) (interface{}, error) {
 		Address:  "",
 	}
 	cbBytes, _ := json.Marshal(cb)
-	reqArgs := map[string]string{
+	reqArgs := map[string]interface{}{
 		"type":     "api", // "api":第三方接口，"chain":"跨链数据"
 		"url":      "http://localhost:7777/testApi",
 		"callback": string(cbBytes),
 	}
 	// 日志事件
-	recordArgs := map[string]string{
+	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
 	// 调用QueryData预言机合约请求外部数据
@@ -44,8 +44,8 @@ func NewRequest(args map[string]string) (interface{}, error) {
 }
 
 // 回调函数,更新externalData
-func UpdateData(args map[string]string) (interface{}, error) {
-	recordArgs := map[string]string{
+func UpdateData(args map[string]interface{}) (interface{}, error) {
+	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
 	log.Infof("updateData方法收到参数：%+v", args)
@@ -62,7 +62,7 @@ func UpdateData(args map[string]string) (interface{}, error) {
 }
 
 // pull跨链数据,回调UseChainData
-func PullChainData(args map[string]string) (interface{}, error) {
+func PullChainData(args map[string]interface{}) (interface{}, error) {
 	cb := meta.Callback{
 		Caller:   "",
 		Value:    0,
@@ -72,7 +72,7 @@ func PullChainData(args map[string]string) (interface{}, error) {
 		Address:  "",
 	}
 	cbBytes, _ := json.Marshal(cb)
-	reqArgs := map[string]string{
+	reqArgs := map[string]interface{}{
 		"type":     "chain", // "api":第三方接口，"chain":"跨链数据"
 		"callback": string(cbBytes),
 		"name": "ssbc2",
@@ -80,7 +80,7 @@ func PullChainData(args map[string]string) (interface{}, error) {
 		"params": "",
 	}
 	// 日志事件
-	recordArgs := map[string]string{
+	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
 	// 调用QueryData预言机合约请求外部数据
@@ -97,8 +97,8 @@ func PullChainData(args map[string]string) (interface{}, error) {
 	return res, nil
 }
 
-func UseChainData(args map[string]string) (interface{}, error) {
-	recordArgs := map[string]string{
+func UseChainData(args map[string]interface{}) (interface{}, error) {
+	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
 	log.Infof("UseChainData方法收到参数：%+v", args)
@@ -114,6 +114,6 @@ func UseChainData(args map[string]string) (interface{}, error) {
 }
 
 // 回退函数，当没有方法匹配时执行此方法
-func Fallback(args map[string]string) (interface{}, error) {
+func Fallback(args map[string]interface{}) (interface{}, error) {
 	return meta.ContractUpdateData{}, nil
 }

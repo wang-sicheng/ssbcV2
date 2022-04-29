@@ -8,12 +8,12 @@ import (
 )
 
 // push数据测试，ssbc1链生成数据传输给ssbc2链的ConsumeData
-func ProductData(args map[string]string) (interface{}, error) {
-	tdata := map[string]string{
+func ProductData(args map[string]interface{}) (interface{}, error) {
+	tdata := map[string]interface{}{
 		"msg": "data from ssbc1:pushData:ProductData",
 	}
 	tdataBytes, _ := json.Marshal(tdata)
-	reqArgs := map[string]string{
+	reqArgs := map[string]interface{}{
 		"type": "chain",
 		"chainName": "ssbc2",
 		"contract": "pushData",
@@ -30,12 +30,12 @@ func ProductData(args map[string]string) (interface{}, error) {
 }
 
 // 提前部署在ssbc2链上
-func ConsumeData(args map[string]string) (interface{}, error){
+func ConsumeData(args map[string]interface{}) (interface{}, error){
 	log.Infof("consumeData收到数据：%+v", args)
 	return nil, nil
 }
 
 // 回退函数，当没有方法匹配时执行此方法
-func Fallback(args map[string]string) (interface{}, error) {
+func Fallback(args map[string]interface{}) (interface{}, error) {
 	return meta.ContractUpdateData{}, nil
 }

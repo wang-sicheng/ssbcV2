@@ -18,9 +18,9 @@ func init()  {
 }
 
 // 根据局部信誉更新全局信誉
-func UpdateGlobalReputation(args map[string]string) (interface{}, error){
+func UpdateGlobalReputation(args map[string]interface{}) (interface{}, error){
 	log.Infof("UpdateGlobalReputation收到数据：%+v", args)
-	localRep, ok := args["localRep"]
+	localRep, ok := args["localRep"].(string)
 	if !ok {
 		log.Error("localRep参数不存在")
 		return meta.ContractUpdateData{}, errors.New("localRep参数不存在")
@@ -36,6 +36,6 @@ func UpdateGlobalReputation(args map[string]string) (interface{}, error){
 }
 
 // 回退函数，当没有方法匹配时执行此方法
-func Fallback(args map[string]string) (interface{}, error) {
+func Fallback(args map[string]interface{}) (interface{}, error) {
 	return meta.ContractUpdateData{}, nil
 }

@@ -8,10 +8,10 @@ import "github.com/ssbcV2/contract"
 
 ```golang
 // 调用其他智能合约，需要自行封装参数和解析结果
-func Call(name string, method string, args map[string]string) (interface{}, error)
+func Call(name string, method string, args map[string]interface{}) (interface{}, error)
 
 // 调用智能合约同时向合约转账
-func CallWithValue(name string, method string, args map[string]string, value int) (interface{}, error)
+func CallWithValue(name string, method string, args map[string]interface{}, value int) (interface{}, error)
 
 // 本次调用是谁发起的，即调用者地址（合约账户、外部账户）
 func Caller() string
@@ -55,8 +55,8 @@ var Value int
 var Balance int
 var Self string
 
-// 参数必须为 map[string]string, 返回结果必须为 (interface{}, error)
-func Multiply(args map[string]string) (interface{}, error) {
+// 参数必须为 map[string]interface{}, 返回结果必须为 (interface{}, error)
+func Multiply(args map[string]interface{}) (interface{}, error) {
 	Caller = contract.Caller()
 	Origin = contract.Origin()
 	Value  = contract.Value()
@@ -64,7 +64,7 @@ func Multiply(args map[string]string) (interface{}, error) {
 	Self   = contract.Self()
 
 	// 调用其他合约，自行封装参数
-	num, err := contract.Call("random", "GetRandom", map[string]string{})
+	num, err := contract.Call("random", "GetRandom", map[string]interface{}{})
 	if err != nil {
 		log.Infof("[Multiply] 调用random失败")
 		return nil, err

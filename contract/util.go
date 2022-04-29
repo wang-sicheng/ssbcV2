@@ -29,7 +29,7 @@ func GoBuildPlugin(contractName string) error {
 	return nil
 }
 
-func execute(name, method string, args map[string]string) (interface{}, error) {
+func execute(name, method string, args map[string]interface{}) (interface{}, error) {
 	// 参数校验
 	if name == "" || method == "" {
 		return nil, errors.New("invalid call params")
@@ -49,7 +49,7 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 			log.Info("没有提供Fallback方法")
 			return nil, err
 		}
-		a, err := f.(func(map[string]string) (interface{}, error))(args)
+		a, err := f.(func(map[string]interface{}) (interface{}, error))(args)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func execute(name, method string, args map[string]string) (interface{}, error) {
 		return a, nil
 	}
 
-	a, err := f.(func(map[string]string) (interface{}, error))(args)
+	a, err := f.(func(map[string]interface{}) (interface{}, error))(args)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func SetContext(task meta.ContractTask) {
 }
 
 // 合约调用合约时设置合约信息
-func SetRecurContext(name string, method string, args map[string]string, value int) {
+func SetRecurContext(name string, method string, args map[string]interface{}, value int) {
 	if len(stack.contexts) == 0 { // 用户调用合约时（第一次调用）context已经设置好
 		stack.Push(curContext) // context设置完毕，入栈
 		return

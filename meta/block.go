@@ -15,7 +15,7 @@ type Transaction struct {
 	Dest      string            `json:"dest"`
 	Contract  string            `json:"contract"`
 	Method    string            `json:"method"`
-	Args      map[string]string `json:"args"`
+	Args      map[string]interface{} `json:"args"`
 	Data      TransactionData   `json:"data"`
 	Value     int               `json:"value"`
 	Id        []byte            `json:"id"`

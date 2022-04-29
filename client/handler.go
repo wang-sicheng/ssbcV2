@@ -299,7 +299,7 @@ func postEvent(ctx *gin.Context) {
 		return
 	}
 	log.Infof("postEvent params: %+v", params)
-	var args map[string]string
+	var args map[string]interface{}
 	err = json.Unmarshal([]byte(params.Args), &args)
 	if err != nil {
 		log.Errorf("[event args], json decode err: %s", err)
@@ -357,7 +357,7 @@ func postTran(ctx *gin.Context) {
 	}
 
 	//将args解析
-	args := make(map[string]string)
+	args := make(map[string]interface{})
 	err = json.Unmarshal([]byte(pt.Args), &args)
 	if err != nil {
 		log.Error("[postTran] json err:", err)
