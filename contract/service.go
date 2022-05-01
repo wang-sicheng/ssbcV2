@@ -152,3 +152,10 @@ func CrossCall(sourceContract, targetChain, targetContract, method string, args 
 	}
 	return res, nil
 }
+
+func Info(info ...interface{}) {
+	log.Info(info)
+	if global.NodeID == global.Client {
+		global.ContractLog <- info
+	}
+}

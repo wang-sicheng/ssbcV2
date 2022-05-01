@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract"
 )
 
@@ -19,7 +18,7 @@ func init() {
 func Deposit(args map[string]interface{}) (interface{}, error) {
 	if Ended {
 		_ = contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
-		log.Info("众筹已结束")
+		contract.Info("众筹已结束")
 		return nil, errors.New("众筹已结束")
 	}
 	Money[contract.Caller()] += contract.Value()
@@ -29,7 +28,7 @@ func Deposit(args map[string]interface{}) (interface{}, error) {
 func End(args map[string]interface{}) (interface{}, error) {
 	_ = contract.Transfer(contract.Caller(), contract.Value()) // End方法不接受转账，退回
 	if Publisher != contract.Caller() {
-		log.Info("非合约发布者，无法结束众筹")
+		contract.Info("非合约发布者，无法结束众筹")
 		return nil, errors.New("非合约发布者，无法结束众筹")
 	}
 	Ended = true

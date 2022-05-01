@@ -1,6 +1,8 @@
 package global
 
-import "github.com/ssbcV2/meta"
+import (
+	"github.com/ssbcV2/meta"
+)
 
 /*
  *	节点用到的全局变量
@@ -9,6 +11,8 @@ import "github.com/ssbcV2/meta"
 var ChangedAccounts = []meta.JFTreeData{} // 当前区块需要更新到状态树的account
 var TreeData = []meta.JFTreeData{}        // 当前区块需要更新的event，sub
 var TaskList = []meta.ContractTask{}      // 当前区块智能合约执行队列
+
+var ContractLog = make(chan interface{}, 20)	// 智能合约执行日志，会通过客户端推送到前端
 
 /*
  * 以下参数根据命令行参数确定，不要重新赋值

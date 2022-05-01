@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract"
 	"time"
 )
@@ -21,13 +20,13 @@ func init() {
 func Bid(args map[string]interface{}) (interface{}, error) {
 	if AuctionEnd.Before(time.Now()) {
 		contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
-		log.Info("拍卖已结束")
+		contract.Info("拍卖已结束")
 		return nil, errors.New("拍卖已结束")
 	}
 
 	if Bids[contract.Caller()]+contract.Value() <= Bids[HighestBidder] {
 		contract.Transfer(contract.Caller(), contract.Value()) // 退回转账
-		log.Info("出价无效")
+		contract.Info("出价无效")
 		return nil, errors.New("出价无效")
 	}
 
@@ -39,12 +38,12 @@ func Bid(args map[string]interface{}) (interface{}, error) {
 func End(args map[string]interface{}) (interface{}, error) {
 	contract.Transfer(contract.Caller(), contract.Value()) // AuctionEnd方法不接受转账，退回
 	if AuctionEnd.After(time.Now()) {
-		log.Info("拍卖还未结束")
+		contract.Info("拍卖还未结束")
 		return nil, errors.New("拍卖还未结束")
 	}
 
 	if Ended {
-		log.Info("重复调用ActionEnd")
+		contract.Info("重复调用ActionEnd")
 		return nil, errors.New("重复调用ActionEnd")
 	}
 	Ended = true

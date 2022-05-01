@@ -18,3 +18,6 @@ sleep 1
 ./ssbcV2 N6 > log/N6.log 2>&1 &
 ./ssbcV2 N7 > log/N7.log 2>&1 &
 ./ssbcV2 client2 > log/client2.log 2>&1 &
+
+sleep 2
+echo "start ssbcV2 service"

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract" // 调用其他智能合约时引入
 	"github.com/ssbcV2/meta"
 )
@@ -32,7 +31,7 @@ func NewRequest(args map[string]interface{}) (interface{}, error) {
 	// 调用QueryData预言机合约请求外部数据
 	res, err := contract.Call("oracle", "QueryData", reqArgs)
 	if err != nil {
-		log.Errorf("call QueryData contract error: %s", err)
+		contract.Info("call QueryData contract error: %s", err)
 		recordArgs["state"] = "fail"
 		_, err = contract.Call("oracle", "RecordEvent", recordArgs)
 		return meta.ContractUpdateData{}, err
@@ -48,7 +47,7 @@ func UpdateData(args map[string]interface{}) (interface{}, error) {
 	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
-	log.Infof("updateData方法收到参数：%+v", args)
+	contract.Info("updateData方法收到参数：%+v", args)
 	newData, ok := args["data"]
 	if !ok {
 		recordArgs["state"] = "fail"
@@ -56,7 +55,7 @@ func UpdateData(args map[string]interface{}) (interface{}, error) {
 		return meta.ContractUpdateData{}, err
 	}
 	ExternalData = newData
-	log.Infof("externalData更新成功：%s", ExternalData)
+	contract.Info("externalData更新成功：%s", ExternalData)
 	_, _ = contract.Call("oracle", "RecordEvent", recordArgs)
 	return meta.ContractUpdateData{}, nil
 }
@@ -86,7 +85,7 @@ func PullChainData(args map[string]interface{}) (interface{}, error) {
 	// 调用QueryData预言机合约请求外部数据
 	res, err := contract.Call("oracle", "QueryData", reqArgs)
 	if err != nil {
-		log.Errorf("call QueryData contract error: %s", err)
+		contract.Info("call QueryData contract error: %s", err)
 		recordArgs["state"] = "fail"
 		_, err = contract.Call("oracle", "RecordEvent", recordArgs)
 		return meta.ContractUpdateData{}, err
@@ -101,14 +100,14 @@ func UseChainData(args map[string]interface{}) (interface{}, error) {
 	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
-	log.Infof("UseChainData方法收到参数：%+v", args)
+	contract.Info("UseChainData方法收到参数：%+v", args)
 	data, ok := args["data"]
 	if !ok {
 		recordArgs["state"] = "fail"
 		_, err := contract.Call("oracle", "RecordEvent", recordArgs)
 		return meta.ContractUpdateData{}, err
 	}
-	log.Infof("PullChainData跨链数据：%s", data)
+	contract.Info("PullChainData跨链数据：%s", data)
 	_, _ = contract.Call("oracle", "RecordEvent", recordArgs)
 	return nil, nil
 }

@@ -43,10 +43,10 @@ func execute(name, method string, args map[string]interface{}) (interface{}, err
 	}
 	f, err := p.Lookup(method)
 	if err != nil {
-		log.Infof("找不到目标方法：%v，执行FallBack方法", method)
+		Info("找不到目标方法：%v，执行FallBack方法", method)
 		f, err := p.Lookup("Fallback")
 		if err != nil {
-			log.Info("没有提供Fallback方法")
+			Info("没有提供Fallback方法")
 			return nil, err
 		}
 		a, err := f.(func(map[string]interface{}) (interface{}, error))(args)
@@ -56,7 +56,7 @@ func execute(name, method string, args map[string]interface{}) (interface{}, err
 		log.Infof("执行结果：%v\n", a)
 		return a, nil
 	}
-
+	Info("调用", method, "方法")
 	a, err := f.(func(map[string]interface{}) (interface{}, error))(args)
 	if err != nil {
 		return nil, err

@@ -37,6 +37,9 @@ func Balance() int
 
 // 根据地址获取对应账户的余额
 func GetBalance(address string) int
+
+// 记录执行情况，调用时会推送到前端
+func Info(info ...interface{})
 ```
 
 #### 智能合约模板（golang plugin）
@@ -45,7 +48,6 @@ func GetBalance(address string) int
 package main	// 包名必须为main
 
 import (
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract" // 使用内置功能时引入
 )
 
@@ -66,13 +68,13 @@ func Multiply(args map[string]interface{}) (interface{}, error) {
 	// 调用其他合约，自行封装参数
 	num, err := contract.Call("random", "GetRandom", map[string]interface{}{})
 	if err != nil {
-		log.Infof("[Multiply] 调用random失败")
+		contract.Info("[Multiply] 调用random失败")
 		return nil, err
 	}
 	a := num.(int)
-	log.Infof("[Multiply] 调用 random.GetRandom 成功，结果：%v\n", a)
+	contract.Info("[Multiply] 调用 random.GetRandom 成功，结果：%v\n", a)
 	ans := a * a
-	log.Infof("[Multiply] 结果：%v\n", ans)
+	contract.Info("[Multiply] 结果：%v\n", ans)
 	return ans, nil
 }
 ```

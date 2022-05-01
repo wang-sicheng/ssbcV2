@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/util"
@@ -44,7 +43,7 @@ func GetCoin(args map[string]interface{}) (interface{}, error) {
 		// 调用QueryData预言机合约请求外部数据
 		res, err := contract.Call("oracle", "QueryData", reqArgs)
 		if err != nil {
-			log.Errorf("call QueryData contract error: %s", err)
+			contract.Info("call QueryData contract error: %s", err)
 			recordArgs["state"] = "fail"
 			_, err = contract.Call("oracle", "RecordEvent", recordArgs)
 			return meta.ContractUpdateData{}, err
@@ -82,7 +81,7 @@ func ReceiveData(args map[string]interface{}) (interface{}, error) {
 	recordArgs := map[string]interface{}{
 		"state": "success",
 	}
-	log.Infof("ReceiveData 方法收到参数：%+v", args)
+	contract.Info("ReceiveData 方法收到参数：%+v", args)
 
 	data, ok := args["data"].(string)
 	if !ok {
@@ -90,7 +89,7 @@ func ReceiveData(args map[string]interface{}) (interface{}, error) {
 		_, err := contract.Call("oracle", "RecordEvent", recordArgs)
 		return meta.ContractUpdateData{}, err
 	}
-	log.Infof("ReceiveData 收到跨链数据：%s", data)
+	contract.Info("ReceiveData 收到跨链数据：%s", data)
 	Statistics = getStatistics(util.JsonToMap(data))
 	Ready = true
 	_, _ = contract.Call("oracle", "RecordEvent", recordArgs)

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/meta"
 )
@@ -23,7 +22,7 @@ func ProductData(args map[string]interface{}) (interface{}, error) {
 	}
 	res, err := contract.Call("oracle", "TransferData", reqArgs)
 	if err != nil {
-		log.Errorf("productData调用TransferData预言机合约失败：%s", err)
+		contract.Info("productData调用TransferData预言机合约失败：%s", err)
 		return nil, err
 	}
 	return res, nil
@@ -31,7 +30,7 @@ func ProductData(args map[string]interface{}) (interface{}, error) {
 
 // 提前部署在ssbc2链上
 func ConsumeData(args map[string]interface{}) (interface{}, error){
-	log.Infof("consumeData收到数据：%+v", args)
+	contract.Info("consumeData收到数据：%+v", args)
 	return nil, nil
 }
 

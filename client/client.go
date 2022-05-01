@@ -17,6 +17,7 @@ func ListenRequest() {
 	r.POST("/postContract", postContract)      // 提交智能合约
 	r.POST("/query", query)                    // 提供链上查询服务
 	r.POST("/postEvent", postEvent)            // 发起事件
+	r.GET("/getLog", getLog)					  // 与前端建立websocket
 	r.Run(global.ClientToUserAddr)
 
 	log.Info(" ---------------------------------------------------------------------------------")

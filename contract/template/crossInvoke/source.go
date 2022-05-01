@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/contract"
 )
 
@@ -29,14 +28,14 @@ func CrossInvokeAdd(args map[string]interface{}) (interface{}, error) {
 func SetAB(args map[string]interface{}) (interface{}, error) {
 	a, ok := args["A"].(float64)
 	if !ok {
-		log.Info("参数A格式错误")
+		contract.Info("参数A格式错误")
 	} else {
 		A = a
 	}
 
 	b, ok := args["B"].(float64)
 	if !ok {
-		log.Info("参数B格式错误")
+		contract.Info("参数B格式错误")
 	} else {
 		B = b
 	}
@@ -46,7 +45,7 @@ func SetAB(args map[string]interface{}) (interface{}, error) {
 func ReceiveResult(args map[string]interface{}) (interface{}, error) {
 	result, ok := args["result"].(float64)
 	if !ok {
-		log.Info("获取跨链结果失败")
+		contract.Info("获取跨链结果失败")
 	}
 	Result = result
 	return Result, nil

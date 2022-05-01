@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/cloudflare/cfssl/log"
+	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/meta"
 )
 
 func ContractTest(args map[string]interface{}) (interface{}, error) {
-	log.Infof("ContractTest: args from client: %+v", args)
+	contract.Info("ContractTest: args from client: %+v", args)
 	return meta.ContractUpdateData{}, nil
 }
 
