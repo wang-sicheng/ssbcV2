@@ -5,6 +5,8 @@ killall -9 ssbcV2
 
 ./ssbcV2 clear
 
+mkdir log
+
 ./ssbcV2 N0 > log/N0.log 2>&1 &
 ./ssbcV2 N4 > log/N4.log 2>&1 &
 sleep 1

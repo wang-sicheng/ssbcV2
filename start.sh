@@ -5,9 +5,9 @@ count=`ps -ef | grep ssbcV2 | grep -v "grep" | wc -l`
 if [ $count -gt 0 ]; then
   echo "ssbcV2 service is running. Please stop it first."
   exit
-else
-  echo "start ssbcV2 service"
 fi
+
+mkdir log
 
 ./ssbcV2 N0 > log/N0.log 2>&1 &
 ./ssbcV2 N4 > log/N4.log 2>&1 &
