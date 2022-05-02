@@ -719,6 +719,7 @@ func (p *pbft) DeploySysContract() error {
 				contractName := res[1]
 				code, _ := ioutil.ReadFile("./contract/system/" + fi.Name())
 				//log.Infof("name: %s", contractName)
+				event.CreateOracleAccount(contractName, string(code))
 				err := p.deployContract(contractName, string(code))
 				if err != nil {
 					log.Errorf("系统合约部署失败:%s,%s", fi.Name(), err)

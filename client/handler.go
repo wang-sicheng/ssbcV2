@@ -96,7 +96,7 @@ func sendNewContract(c meta.ContractPost) {
 	data.Code = c.Code
 	t := meta.Transaction{
 		From:      c.Account,
-		To:        generateContractAddress(),
+		To:        contract.GenerateContractAddress(),
 		Dest:      "",
 		Contract:  c.Name,
 		Method:    "",

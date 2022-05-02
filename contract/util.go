@@ -2,12 +2,14 @@ package contract
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/meta"
+	"github.com/ssbcV2/util"
 	"os/exec"
 	"plugin"
 )
@@ -135,4 +137,17 @@ func PrintContext() {
 	var out bytes.Buffer
 	_ = json.Indent(&out, bs, "", "\t")
 	log.Infof("当前合约调用的context: %v\n", out.String())
+}
+
+// 生成合约地址（虽然合约地址不应该由公私钥生成）
+func GenerateContractAddress() string {
+	//首先生成公私钥
+	_, pubKey := util.GetKeyPair()
+	//账户地址
+	//将公钥进行hash
+	pubHash, _ := util.CalculateHash(pubKey)
+	//将公钥hash作为账户地址,256位
+	address := hex.EncodeToString(pubHash)
+	log.Infof("contract account address len: %d", len(address))
+	return address
 }
