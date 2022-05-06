@@ -6,3 +6,5 @@ const EventAllDataKey = "eventAllDataKey"
 const EventKey = "eventKey"
 // 存储订阅数据
 const EventSubKey = "eventSubKey"
+// 存储预言机链下报告
+const OracleReport = "oracleReport"

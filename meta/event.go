@@ -3,10 +3,24 @@ package meta
 import (
 	"encoding/hex"
 	"github.com/rjkris/go-jellyfish-merkletree/common"
+	"time"
 )
 
 type JFTreeData interface {
 	GetKey() common.HashValue
+}
+
+// 预言机链下报告
+type UnderChainReport struct {
+	StartConsensusTime time.Time // 开始共识时间
+	ConsensusCostTime time.Duration // 共识耗时
+	DataRequestTime time.Duration // 数据请求时间
+	SignNodeArrays []string // 门限签名结果
+	SignTimeArrays map[string]time.Duration // 签名时间
+	LeaderNode int // 主节点序号
+	EventVerifyResult map[int]bool // 事件验证结果
+	Data interface{} // 共识数据
+	ConsensusResult bool // 共识结果
 }
 
 // 用于前端展示
@@ -70,6 +84,7 @@ type EventMessageParams struct {
 	EventKey  string `json:"event_key"`
 	PublicKey string `json:"public_key"`
 	Args      string `json:"args"`
+	Report    string `json:"report"`
 }
 
 func (e Event) GetKey() common.HashValue {

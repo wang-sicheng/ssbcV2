@@ -22,13 +22,16 @@ var EventDbInfo map[string]meta.Event
 // 订阅数据
 var SubDbInfo map[string]meta.EventSub
 // 预言机合约账户
-var OracleAccounts map[string]meta.Account // 系统合约账户
+var OracleAccounts map[string]meta.Account
+// 链下报告
+var OracleReports []meta.UnderChainReport
 
 func init() {
 	EventData = map[string]meta.JFTreeData{}
 	EventDbInfo = map[string]meta.Event{}
 	SubDbInfo = map[string]meta.EventSub{}
 	OracleAccounts = map[string]meta.Account{}
+	OracleReports = []meta.UnderChainReport{}
 }
 
 func IsContainsKey(key string) bool {
@@ -357,6 +360,7 @@ func CreateOracleAccount(name string, code string)  {
 	newAccount := account.CreateContract(name, contract.GenerateContractAddress(), code, "", contractInfo)
 	OracleAccounts[name] = newAccount
 }
+
 //func UpdateEventData(name string, address string, from string) ([]meta.JFTreeData, error) {
 //	var args map[string]interface{}
 //	var treeDataList []meta.JFTreeData

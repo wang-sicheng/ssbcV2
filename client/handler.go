@@ -282,6 +282,12 @@ func query(ctx *gin.Context) {
 	case "getEvent":
 		data, _ := event.GetAllEventData()
 		response = goodResponse(data)
+	case "getOracleAccount":
+		accountBytes, _ := json.Marshal(event.OracleAccounts)
+		response = goodResponse(accountBytes)
+	case "getOracleReports":
+		reportBytes, _ := json.Marshal(event.OracleReports)
+		response = goodResponse(reportBytes)
 	default:
 		log.Info("Query参数有误!")
 		response = errResponse("Query参数有误!")
@@ -299,6 +305,24 @@ func postEvent(ctx *gin.Context) {
 		return
 	}
 	log.Infof("postEvent params: %+v", params)
+
+	// 存储链下报告
+	var report meta.UnderChainReport
+	err = json.Unmarshal([]byte(params.Report), &report)
+	if err != nil {
+		log.Errorf("report json decode err: %s", err)
+	}
+	dbReports := levelDB.DBGet(common.OracleReport)
+	if dbReports == nil {
+		event.OracleReports = []meta.UnderChainReport{}
+	} else {
+		_ = json.Unmarshal(dbReports, &event.OracleReports)
+	}
+	event.OracleReports = append(event.OracleReports, report)
+	reportsBytes, _ := json.Marshal(event.OracleReports)
+	levelDB.DBPut(common.OracleReport, reportsBytes)
+	log.Infof("预言机链下报告存储完成，%+v", report)
+
 	var args map[string]interface{}
 	err = json.Unmarshal([]byte(params.Args), &args)
 	if err != nil {
