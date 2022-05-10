@@ -3,9 +3,11 @@ package contract
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/global"
+	"github.com/ssbcV2/meta"
 )
 
 /*
@@ -156,6 +158,46 @@ func CrossCall(sourceContract, targetChain, targetContract, method string, args 
 func Info(info ...interface{}) {
 	log.Info(info)
 	if global.NodeID == global.Client {
-		global.ContractLog <- info
+		global.ContractLog <- fmt.Sprint(info)
 	}
+}
+
+func Infof(format string, info ...interface{}) {
+	log.Infof(format, info)
+	if global.NodeID == global.Client {
+		global.ContractLog <- fmt.Sprintf(format, info)
+	}
+}
+
+/* 获取跨链合约数据
+targetChain: 目标链名
+contractName: 合约名称
+dataName: 目标数据
+callback: 数据传回时调用的方法（确保当前合约存在该方法）
+*/
+func GetCrossContractData(targetChain, contractName, dataName, callback string) (interface{}, error) {
+	cb := meta.Callback{
+		Caller:   "",
+		Value:    0,
+		Contract: Name(),
+		Method:   callback,
+		Args:     nil,
+		Address:  "",
+	}
+	cbBytes, _ := json.Marshal(cb)
+	reqArgs := map[string]interface{}{
+		"type":     "chain", // "api":第三方接口，"chain":"跨链数据"
+		"callback": string(cbBytes),
+		"name":     targetChain,
+		"dataType": "contractData",
+		"params":   contractName + "," + dataName,
+	}
+
+	// 调用QueryData预言机合约请求外部数据
+	res, err := Call("oracle", "QueryData", reqArgs)
+	if err != nil {
+		Infof("call QueryData contract error: %s", err)
+		return nil, err
+	}
+	return res, nil
 }
