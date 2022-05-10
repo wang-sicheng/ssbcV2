@@ -33,7 +33,11 @@ func getLog(c *gin.Context) {
 		log.Info("Upgrade failed")
 		return
 	}
-	defer ws.Close()
+	//defer ws.Close()
+	// 5秒后断开websocket连接
+	time.AfterFunc(5 * time.Second, func() {
+		ws.Close()
+	})
 	for {
 		result := <- global.ContractLog
 		err = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint(result)))
@@ -42,9 +46,5 @@ func getLog(c *gin.Context) {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
-		// 主动断开websocket连接
-		if len(global.ContractLog) == 0 {
-			break
-		}
 	}
 }
