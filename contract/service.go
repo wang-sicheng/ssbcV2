@@ -158,14 +158,14 @@ func CrossCall(sourceContract, targetChain, targetContract, method string, args 
 func Info(info ...interface{}) {
 	log.Info(info)
 	if global.NodeID == global.Client {
-		global.ContractLog <- fmt.Sprint(info)
+		global.ContractLog <- fmt.Sprint(info...)
 	}
 }
 
 func Infof(format string, info ...interface{}) {
 	log.Infof(format, info)
 	if global.NodeID == global.Client {
-		global.ContractLog <- fmt.Sprintf(format, info)
+		global.ContractLog <- fmt.Sprintf(format, info...)
 	}
 }
 
@@ -200,4 +200,12 @@ func GetCrossContractData(targetChain, contractName, dataName, callback string) 
 		return nil, err
 	}
 	return res, nil
+}
+
+func ToBytes(s interface{}) []byte {
+	data, err := json.Marshal(s)
+	if err != nil {
+		Infof("json.Marshal error %v:", err)
+	}
+	return data
 }
