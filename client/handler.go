@@ -16,6 +16,7 @@ import (
 	"github.com/ssbcV2/pbft"
 	"github.com/ssbcV2/util"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -66,6 +67,17 @@ func postContract(ctx *gin.Context) {
 	if contractName == "" {
 		log.Error("合约名称不能为空")
 		hr := errResponse("合约名称不能为空")
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
+	if len(contractName) > 64 {
+		hr := errResponse("合约名称长度不能超过64")
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
+	match, _ := regexp.MatchString(`^[A-Za-z0-9_]+$`, contractName)
+	if !match {
+		hr := errResponse("合约名称只能由字母、数字和下划线构成")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
