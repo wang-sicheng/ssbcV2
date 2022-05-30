@@ -7,11 +7,14 @@ if [ $count -gt 0 ]; then
   exit
 fi
 
-mkdir log
+if [ ! -d "log" ]; then
+  mkdir log
+fi
+echo "Waiting..."
 
 ./ssbcV2 N0 > log/N0.log 2>&1 &
 ./ssbcV2 N4 > log/N4.log 2>&1 &
-sleep 1
+sleep 2
 
 ./ssbcV2 N1 > log/N1.log 2>&1 &
 ./ssbcV2 N2 > log/N2.log 2>&1 &
@@ -23,5 +26,5 @@ sleep 1
 ./ssbcV2 N7 > log/N7.log 2>&1 &
 ./ssbcV2 client2 > log/client2.log 2>&1 &
 
-sleep 2
-echo "start ssbcV2 service"
+sleep 4
+echo "You've started ssbcV2 service."
