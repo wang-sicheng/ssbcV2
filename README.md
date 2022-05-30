@@ -17,6 +17,7 @@
 ```shell
 go install github.com/securego/gosec/v2/cmd/gosec@latest
 ```
+请务必确保将 $GOPATH/bin 配置到 PATH 路径，否则无法使用 gosec
 
 ## 拉取代码并构建
 

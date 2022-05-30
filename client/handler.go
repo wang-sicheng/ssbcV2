@@ -548,10 +548,20 @@ func checkTranParameters(pt *meta.PostTran) (string, bool) {
 		return "公钥不能为空", false
 	}
 
+	// 发起者账户
+	a := account.GetAccount(pt.From)
+
+	if pt.Value > a.Balance {
+		return "转账金额超出账户余额", false
+	}
+
 	// 调用合约
 	if pt.Contract != "" {
 		if pt.Method == "" {
 			return "方法不能为空", false
+		}
+		if pt.Value < 0 {
+			return "转账金额必须为非负数", false
 		}
 		return "", true
 	}
