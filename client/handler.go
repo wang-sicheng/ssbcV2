@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/gin-gonic/gin"
 	"github.com/ssbcV2/account"
@@ -10,6 +11,7 @@ import (
 	"github.com/ssbcV2/common"
 	"github.com/ssbcV2/contract"
 	"github.com/ssbcV2/event"
+	"github.com/ssbcV2/gen"
 	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/levelDB"
 	"github.com/ssbcV2/meta"
@@ -275,9 +277,9 @@ func query(ctx *gin.Context) {
 			trans := bc.TX
 			response = goodResponse(trans)
 		}
-	case "contractData":  // 获取合约内的数据
+	case "contractData": // 获取合约内的数据
 		if q.Parameters == nil || len(q.Parameters) < 2 {
-			response = errResponseWithData("参数错误", map[string]interface{}{})	// 返回空的map，以便前端展示
+			response = errResponseWithData("参数错误", map[string]interface{}{}) // 返回空的map，以便前端展示
 			log.Info("获取合约内数据失败")
 			break
 		}
@@ -632,4 +634,33 @@ func generateContractAddress() string {
 	address := hex.EncodeToString(pubHash)
 	log.Infof("contract account address len: %d", len(address))
 	return address
+}
+
+// 模型上传接口
+func modelUpload(c *gin.Context) {
+	form, _ := c.MultipartForm()
+	//判断传入的是本体文件还是bpmn文件
+	//bpmn文件 命名为bpmn.xml，本体文件命名为ontology
+	files := form.File["bpmn"]
+	fileName := "bpmn.xml"
+	if files == nil {
+		files = form.File["ontology"]
+		fileName = "ontology.owl"
+	}
+
+	for _, file := range files {
+		// Upload the file to specific dst.
+		c.SaveUploadedFile(file, "./res/"+fileName)
+	}
+
+	c.String(http.StatusOK, fmt.Sprintf("uploaded!"))
+}
+
+func genCode(c *gin.Context) {
+	res, e := gen.Gen()
+	if e == nil {
+		c.JSON(http.StatusOK, goodResponse(res))
+	} else {
+		c.JSON(http.StatusNoContent, "no content!")
+	}
 }
