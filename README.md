@@ -1,13 +1,18 @@
 # ssbcV2
 
 ## 环境
-因为后端用到了golang-plugin，Windows暂时不支持，所以需要MacOS或者Linux操作系统运行。为了避免出现兼容性问题，请尽量使用推荐的软件版本（至少保证大版本相同）。
+因为后端用到了golang-plugin，Windows暂时不支持，所以需要MacOS或者Linux操作系统运行。为了避免出现兼容性问题，请尽量使用推荐的软件版本（大版本相同即可）。
 
 * node（v12.22.1）
 
 * npm（v6.14.12）
 
 * golang（1.16.3）
+```shell
+export GO111MODULE=on # 开启go module
+export GOPROXY=https://goproxy.cn # 更换数据源
+```
+此外，GOPATH底下应该有三个目录：src、bin和pkg。后端项目需放在src目录底下。
 
 * Redis（v6.2.6）
 
@@ -17,7 +22,16 @@
 ```shell
 go install github.com/securego/gosec/v2/cmd/gosec@latest
 ```
-请务必确保将 $GOPATH/bin 配置到 PATH 路径，否则无法使用 gosec
+请务必确保将 $GOPATH/bin 配置到 PATH 路径，否则无法使用 gosec。
+
+在任意目录下开启终端，检查依赖是否安装成功
+```shell
+node -v
+npm -v
+go version
+git version
+gosec -version
+```
 
 ## 拉取代码并构建
 
