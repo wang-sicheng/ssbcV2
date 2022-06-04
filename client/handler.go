@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/gin-gonic/gin"
 	"github.com/ssbcV2/account"
@@ -653,7 +652,7 @@ func modelUpload(c *gin.Context) {
 		c.SaveUploadedFile(file, "./res/"+fileName)
 	}
 
-	c.String(http.StatusOK, fmt.Sprintf("uploaded!"))
+	c.JSON(http.StatusOK, goodResponse("Uploaded"))
 }
 
 func genCode(c *gin.Context) {
@@ -663,4 +662,5 @@ func genCode(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusNoContent, "no content!")
 	}
+	// todo:删除过去上传的模型
 }
