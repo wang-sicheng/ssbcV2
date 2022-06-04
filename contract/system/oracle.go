@@ -70,7 +70,6 @@ func QueryData(args map[string]interface{}) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("miss type args")
 	}
-
 	switch qType {
 	case "api":
 		eventArgs["eventType"] = "1"

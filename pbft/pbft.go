@@ -555,6 +555,13 @@ func (p *pbft) execute(tx meta.Transaction) {
 
 // 交易打包前检测
 func checkTran(tx meta.Transaction) bool {
+	if tx.Sign != nil {
+		ok := util.RsaVerySignWithSha256(tx.Hash, tx.Sign, []byte(tx.PublicKey))
+		if !ok {
+			log.Errorf("交易签名校验失败,拒绝打包交易")
+			return false
+		}
+	}
 	switch tx.Type {
 	case meta.Transfer:
 		// 判断能否转账

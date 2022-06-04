@@ -126,7 +126,7 @@ func sendNewContract(c meta.ContractPost) {
 	//先将交易进行hash
 	tByte, _ := json.Marshal(t)
 	t.Hash, _ = util.CalculateHash(tByte)
-	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(c.PrivateKey))
+	t.Sign=util.RsaSignWithSha256(t.Hash,[]byte(c.PrivateKey))
 	//客户端需要把交易信息发送给主节点
 	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
@@ -188,7 +188,7 @@ func registerAccount(ctx *gin.Context) {
 	//先将交易进行hash
 	tByte, _ := json.Marshal(t)
 	t.Hash, _ = util.CalculateHash(tByte)
-	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
+	//t.Sign=util.RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
 	//客户端需要把交易信息发送给主节点
 	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
@@ -419,7 +419,7 @@ func postTran(ctx *gin.Context) {
 	//先将交易进行hash
 	tByte, _ := json.Marshal(t)
 	t.Hash, _ = util.CalculateHash(tByte)
-	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
+	t.Sign=util.RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
 	//客户端需要把交易信息发送给主节点
 	r := new(pbft.Request)
 	r.Timestamp = time.Now().UnixNano()
