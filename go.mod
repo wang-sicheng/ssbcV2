@@ -3,6 +3,7 @@ module github.com/ssbcV2
 go 1.14
 
 require (
+	github.com/beevik/etree v1.1.0
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/gin-gonic/gin v1.7.2
 	github.com/go-redis/redis/v8 v8.8.3
@@ -11,7 +12,6 @@ require (
 	github.com/spf13/afero v1.8.1 // indirect
 	github.com/spf13/viper v1.10.1
 	github.com/syndtr/goleveldb v1.0.0
-	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect

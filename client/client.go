@@ -17,8 +17,11 @@ func ListenRequest() {
 	r.POST("/postContract", postContract)      // 提交智能合约
 	r.POST("/query", query)                    // 提供链上查询服务
 	r.POST("/postEvent", postEvent)            // 发起事件
-	r.GET("/getLog", getLog)					  // 与前端建立websocket
+	r.GET("/getLog", getLog)                   // 与前端建立websocket
+	r.POST("/modelUpload", modelUpload) // 上传模型
+	r.GET("/genCode", genCode)     //生成代码
 	r.Run(global.ClientToUserAddr)
+
 
 	log.Info(" ---------------------------------------------------------------------------------")
 	log.Info("|  已启动PBFT客户端，请启动全部节点后再发送消息！  |")
