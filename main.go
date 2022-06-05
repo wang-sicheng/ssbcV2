@@ -64,11 +64,11 @@ func main() {
 		if nodeID == "client1" {
 			go client.ListenRequest() // 启动客户端程序
 			p := pbft.NewPBFT(nodeID, common.Client1ToNodeAddr)
-			p.DeploySysContract()
+			go p.DeploySysContract()
 			go p.TcpListen()
 		} else if addr, ok := common.NodeTable1[nodeID]; ok {
 			p := pbft.NewPBFT(nodeID, addr)
-			p.DeploySysContract() // 部署系统智能合约
+			go p.DeploySysContract() // 部署系统智能合约
 			go p.TcpListen()      //启动节点
 		}
 
@@ -85,11 +85,11 @@ func main() {
 		if nodeID == "client2" {
 			go client.ListenRequest() // 启动客户端程序
 			p := pbft.NewPBFT(nodeID, common.Client2ToNodeAddr)
-			p.DeploySysContract()
+			go p.DeploySysContract()
 			go p.TcpListen()
 		} else if addr, ok := common.NodeTable2[nodeID]; ok {
 			p := pbft.NewPBFT(nodeID, addr)
-			p.DeploySysContract()
+			go p.DeploySysContract()
 			go p.TcpListen() //启动节点
 		}
 	}
