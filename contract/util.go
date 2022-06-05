@@ -51,6 +51,11 @@ func execute(name, method string, args map[string]interface{}) (interface{}, err
 			Info("没有提供Fallback方法")
 			return nil, err
 		}
+		f, ok := f.(func(map[string]interface{}) (interface{}, error))
+		if !ok {
+			Info("调用失败，方法参数类型应为 map[string]interface{}，返回值应为 (interface{}, error)")
+			return nil, err
+		}
 		a, err := f.(func(map[string]interface{}) (interface{}, error))(args)
 		if err != nil {
 			return nil, err
@@ -59,6 +64,11 @@ func execute(name, method string, args map[string]interface{}) (interface{}, err
 		return a, nil
 	}
 	Infof("调用 %v 方法", method)
+	f, ok := f.(func(map[string]interface{}) (interface{}, error))
+	if !ok {
+		Info("调用失败，方法参数类型应为 map[string]interface{}，返回值应为 (interface{}, error)")
+		return nil, err
+	}
 	a, err := f.(func(map[string]interface{}) (interface{}, error))(args)
 	if err != nil {
 		return nil, err
