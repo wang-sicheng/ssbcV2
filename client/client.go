@@ -14,7 +14,6 @@ func ListenRequest() {
 	//r.Use(TlsHandler()) // 重定向为https
 	r.POST("/postTran", postTran)              // 提交一笔交易
 	r.GET("/registerAccount", registerAccount) // 注册账户
-	r.POST("/postCrossTran", postCrossTran)    // 提交一笔跨链交易
 	r.POST("/postContract", postContract)      // 提交智能合约
 	r.POST("/query", query)                    // 提供链上查询服务
 	r.POST("/postEvent", postEvent)            // 发起事件

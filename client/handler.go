@@ -446,66 +446,6 @@ func postTran(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, hr)
 }
 
-func postCrossTran(ctx *gin.Context) {
-	b, _ := ctx.GetRawData()
-	log.Infof("[client] 收到跨链交易: %s\n", string(b))
-
-	pt := meta.PostCrossTran{}
-	//err := ctx.ShouldBind(&pt)
-	err := json.Unmarshal(b, &pt)
-	//err := ctx.BindJSON(&pt)
-	if err != nil {
-		log.Error("[postTran],json decode err:", err)
-	}
-
-	// 检查交易参数
-	if msg, ok := checkCrossTranParameters(&pt); !ok {
-		hr := errResponse(msg)
-		log.Infof(msg + "\n")
-		ctx.JSON(http.StatusOK, hr)
-		return
-	}
-
-	t := meta.Transaction{
-		SourceChainId: pt.SourceChain,
-		DestChainId:   pt.DestChain,
-		From:          pt.From,
-		To:            pt.To,
-		Value:         pt.Value,
-		Timestamp:     "",
-		PublicKey:     pt.PublicKey,
-		Type:          meta.CrossTransfer,
-	}
-	//客户端在转发交易之前需要对交易进行签名
-	//先将交易进行hash
-	//tByte, _ := json.Marshal(t)
-	//t.Hash, _ = util.CalculateHash(tByte)
-	//t.Sign=RsaSignWithSha256(t.Hash,[]byte(pt.PrivateKey))
-	//客户端需要把交易信息发送给主节点
-	r := new(pbft.Request)
-	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = global.ClientToNodeAddr
-	r.Message.ID = util.GetRandom()
-	r.Type = 0
-
-	tb, _ := json.Marshal(t)
-	r.Message.Content = string(tb)
-	br, err := json.Marshal(r)
-	if err != nil {
-		log.Error(err)
-	}
-	//log.Info(string(br))
-	msg := meta.TCPMessage{
-		Type:    common.PBFTRequest,
-		Content: br,
-	}
-	//默认N0为主节点，直接把请求信息发送至N0
-	util.TCPSend(msg, global.NodeTable[global.Master])
-	//返回提交成功
-	hr := goodResponse("")
-	ctx.JSON(http.StatusOK, hr)
-}
-
 // 正常响应，返回数据
 func goodResponse(data interface{}) meta.HttpResponse {
 	res := meta.HttpResponse{
@@ -580,44 +520,6 @@ func checkTranParameters(pt *meta.PostTran) (string, bool) {
 	// 确保接收地址已存在
 	if !account.ContainsAddress(pt.To) {
 		return "接收地址不存在", false
-	}
-	return "", true
-}
-
-// 检查跨链交易参数
-func checkCrossTranParameters(pt *meta.PostCrossTran) (string, bool) {
-	if pt.From == "" {
-		return "发起地址不能为空", false
-	}
-
-	if pt.From == pt.To {
-		return "发起地址和接收地址不能相同", false
-	}
-
-	if pt.PublicKey == "" {
-		return "公钥不能为空", false
-	}
-
-	// 调用合约
-	if pt.Contract != "" {
-		if pt.Method == "" {
-			return "方法不能为空", false
-		}
-		return "", true
-	}
-
-	// 转账交易
-	if pt.Value <= 0 {
-		return "转账金额必须为正整数", false
-	}
-
-	// 确保发起地址已存在，接收地址本链无法确定
-	if !account.ContainsAddress(pt.From) {
-		return "发起地址不存在", false
-	}
-
-	if len(pt.To) == 0 {
-		return "接收地址不能为空", false
 	}
 	return "", true
 }

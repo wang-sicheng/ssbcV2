@@ -533,21 +533,6 @@ func (p *pbft) execute(tx meta.Transaction) {
 				continue
 			}
 		}
-	case meta.CrossTransfer:
-		if global.ChainID == tx.SourceChainId {
-			global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value))
-
-			// 由client节点向目标链client发送交易和proof
-			if p.node.nodeID == global.Client {
-				postCT2Dest(tx)
-			}
-
-		} else if global.ChainID == tx.DestChainId {
-			// todo: 校验proof
-			//proof := tx.Proof
-			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.To, tx.Value))
-		}
-
 	default:
 		log.Infof("未知的交易类型")
 	}
@@ -575,57 +560,11 @@ func checkTran(tx meta.Transaction) bool {
 		// 判断合约能否部署（并没有真正部署）
 	case meta.Invoke:
 		// 判断合约能否调用（并没有真正调用）
-	case meta.CrossTransfer:
-		// 判断能否跨链转账
 	default:
 		log.Infof("未知的交易类型")
 		return false
 	}
 	return true
-}
-
-// 向目标链client发送转账交易
-func postCT2Dest(ct meta.Transaction) {
-	cBcs := chain.GetCurrentBlockChain()
-	height := len(cBcs) - 1
-	// 获取到区块中所有的交易
-	txs := cBcs[height].TX
-	// 生成该交易的merkle proof
-	tranHash, merklePath, merkleIndex := merkle.GetTranMerklePath(txs, 0) // 交易index都是0，因为目前每个区块只有一个交易
-	proof := meta.CrossTranProof{
-		MerklePath:  merklePath,
-		TransHash:   tranHash,
-		Height:      height,
-		MerkleIndex: merkleIndex,
-	}
-	ct.Proof = proof
-
-	r := new(Request)
-	r.Timestamp = time.Now().UnixNano()
-	r.ClientAddr = global.ClientToNodeAddr
-	r.Message.ID = util.GetRandom()
-	r.Type = 0
-
-	tb, _ := json.Marshal(ct)
-	r.Message.Content = string(tb)
-	br, err := json.Marshal(r)
-	if err != nil {
-		log.Error(err)
-	}
-	//log.Info(string(br))
-	msg := meta.TCPMessage{
-		Type:    common.PBFTRequest,
-		Content: br,
-	}
-	var targetAddress string
-	if global.ChainID == common.ChainId1 {
-		targetAddress = common.NodeTable2["N4"]
-	}
-	if global.ChainID == common.ChainId2 {
-		targetAddress = common.NodeTable1["N0"]
-	}
-	log.Infof("target: %v", targetAddress)
-	util.TCPSend(msg, targetAddress)
 }
 
 //序号累加

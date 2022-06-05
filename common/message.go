@@ -15,7 +15,3 @@ const (
 	PBFTCommit     = "PBFTCommit"
 	PBFTReply      = "PBFTReply"
 )
-
-const (
-	CrossTranRequest = "CrossTranRequest"
-)
