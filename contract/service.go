@@ -78,6 +78,12 @@ func TransferFrom(from, to string, amount int) error {
 
 // 调用智能合约
 func Call(name string, method string, args map[string]interface{}) (interface{}, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			Info("合约执行异常，请检查代码和参数\n", err)
+		}
+	}()
+
 	log.Infof("调用 %v 合约的 %v() 方法\n", name, method)
 	SetRecurContext(name, method, args, 0)
 	PrintContext()
