@@ -32,6 +32,12 @@ func GoBuildPlugin(contractName string) error {
 }
 
 func execute(name, method string, args map[string]interface{}) (interface{}, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			Info("合约执行异常，请检查代码和参数\n", err)
+		}
+	}()
+
 	// 参数校验
 	if name == "" || method == "" {
 		return nil, errors.New("invalid call params")
