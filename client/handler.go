@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -391,7 +392,16 @@ func postTran(ctx *gin.Context) {
 	err := json.Unmarshal(b, &pt)
 	//err := ctx.BindJSON(&pt)
 	if err != nil {
-		log.Error("[postTran],json decode err:", err)
+		if strings.Contains(err.Error(), "PostTran.value") {
+			hr := errResponse("转账金额必须为数字")
+			log.Infof(err.Error() + "\n")
+			ctx.JSON(http.StatusOK, hr)
+			return
+		}
+		hr := errResponse(err.Error())
+		log.Infof(err.Error() + "\n")
+		ctx.JSON(http.StatusOK, hr)
+		return
 	}
 
 	// 检查交易参数
@@ -406,7 +416,10 @@ func postTran(ctx *gin.Context) {
 	args := make(map[string]interface{})
 	err = json.Unmarshal([]byte(pt.Args), &args)
 	if err != nil {
-		log.Error("[postTran] json err:", err)
+		hr := errResponse("参数解析错误，请使用json格式")
+		log.Infof(err.Error() + "\n")
+		ctx.JSON(http.StatusOK, hr)
+		return
 	}
 	log.Infof("合约参数：%v\n", args)
 	t := meta.Transaction{
