@@ -46,5 +46,9 @@ func getLog(c *gin.Context) {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
+		// 队列为空时跳出循环
+		if len(global.ContractLog) == 0 {
+			break
+		}
 	}
 }
