@@ -7,7 +7,10 @@ import (
 )
 
 var ctx = context.Background()
-var rdb = redis.NewClient(&redis.Options{})
+var rdb = redis.NewClient(&redis.Options{
+	Addr:     "127.0.0.1:6379",
+	Password: "",
+})
 
 //初始化
 //func init() {
@@ -38,6 +41,16 @@ func GetFromRedis(key string) (string, error) {
 	} else {
 		return val, nil
 	}
+}
+
+// list push
+func PushToList(key string, value string) error {
+	err := rdb.RPush(ctx, key, value).Err()
+	if err != nil {
+		log.Errorf("event push to list error: %s", err)
+		return err
+	}
+	return nil
 }
 
 func ExampleClient() {

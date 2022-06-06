@@ -17,14 +17,14 @@ import (
 var state State // 私有，通过函数进行操作
 
 type State struct {
-	Accounts map[string]meta.Account // Accounts 存储了所有账户（普通账户和合约账户），key: 账户地址(合约账户用的name) - val: 账户信息
+	Accounts map[string]meta.Account // Accounts 存储了所有账户（外部账户和合约账户），key: 账户地址 - val: 账户信息
 }
 
 func init() {
 	state.Accounts = map[string]meta.Account{}
 }
 
-// 创建普通账户
+// 创建外部账户
 func CreateAccount(address, publicKey string, balance int) meta.Account {
 	account := meta.Account{
 		Address:    address,
@@ -40,19 +40,20 @@ func CreateAccount(address, publicKey string, balance int) meta.Account {
 }
 
 // 创建智能合约账户
-func CreateContract(address, publicKey, code, name string) meta.Account {
+func CreateContract(name, address, code, publisher string, contractInfo meta.ContractInfo) meta.Account {
 	contract := meta.Account{
 		Address: address,
 		Balance: 0,
 		Data: meta.AccountData{
 			Code:         code,
 			ContractName: name,
+			Publisher:    publisher,
+			Methods:      contractInfo.Methods,
+			Variables: 	  contractInfo.Variables,
 		},
-		PublicKey:  publicKey,
 		IsContract: true,
 	}
-	// 用智能合约的名称作为key，合约地址暂时没有使用
-	state.Accounts[name] = contract
+	state.Accounts[address] = contract
 
 	PutIntoDisk(state.Accounts)
 	return contract
@@ -102,15 +103,35 @@ func GetFromDisk() {
 	_ = json.Unmarshal(accountBytes, &state.Accounts)
 }
 
+// 合约名称是否存在
+func ContainsContract(name string) bool {
+	for _, a := range state.Accounts {
+		if a.Data.ContractName == name {
+			return true
+		}
+	}
+	return false
+}
+
 // 账户地址是否存在
 func ContainsAddress(address string) bool {
 	_, ok := state.Accounts[address]
 	return ok
 }
 
-// 获取账户信息
+// 通过地址获取账户信息
 func GetAccount(address string) meta.Account {
 	return state.Accounts[address]
+}
+
+// 通过合约名称获取账户信息
+func GetContractByName(name string) meta.Account {
+	for _, a := range state.Accounts {
+		if a.Data.ContractName == name {
+			return a
+		}
+	}
+	return meta.Account{}
 }
 
 // 获取所有的账户地址
@@ -122,12 +143,18 @@ func GetTotalAddress() []string {
 	return totalAddress
 }
 
-// 是否为普通账户地址
+// 是否为外部账户地址
 func IsOrdinaryAccount(address string) bool {
 	return !state.Accounts[address].IsContract
 }
 
-// 是否为智能合约账户账户地址
+// 是否为合约账户地址
 func IsContractAccount(address string) bool {
 	return state.Accounts[address].IsContract
+}
+
+func SeqIncrease(seq int, address string) {
+	ac := state.Accounts[address]
+	ac.Seq = seq
+	state.Accounts[address] = ac
 }

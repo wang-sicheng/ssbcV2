@@ -1,0 +1,7 @@
+env:
+  language: golang
+
+check:
+  code_check:  true  # 静态代码检测
+  model_check: false  # 模型检测（目前只支持Mac和Linux，并且需要安装SPIN工具，Mac还需要安装coreutils工具）
+

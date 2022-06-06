@@ -2,13 +2,15 @@ package pbft
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/util"
+	"regexp"
 	"testing"
 )
 
 func TestGenerateKey(t *testing.T) {
-	pri, pub := GetKeyPair()
+	pri, pub := util.GetKeyPair()
 	log.Info("pri=", string(pri))
 	log.Info("pub=", string(pub))
 	//将公钥进行hash
@@ -18,7 +20,8 @@ func TestGenerateKey(t *testing.T) {
 	log.Info(account)
 }
 
-func TestGoModManage(t *testing.T) {
-	_, errStr := GoModManage("hellotest")
-	log.Info("错误：", errStr)
+func TestRe(t *testing.T) {
+	r, _ := regexp.Compile("(.*).go")
+	res := r.FindStringSubmatch("oracle.go")
+	fmt.Println(res)
 }

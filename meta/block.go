@@ -2,10 +2,10 @@ package meta
 
 // 交易类型
 const (
-	Transfer int = iota // 0: 转账交易
-	Register            // 1: 注册账户
-	Publish             // 2: 发布合约
-	Invoke              // 3: 调用合约
+	Transfer      int = iota // 0: 转账交易
+	Register                 // 1: 注册账户
+	Publish                  // 2: 发布合约
+	Invoke                   // 3: 调用合约
 )
 
 type Transaction struct {
@@ -14,7 +14,7 @@ type Transaction struct {
 	Dest      string            `json:"dest"`
 	Contract  string            `json:"contract"`
 	Method    string            `json:"method"`
-	Args      map[string]string `json:"args"`
+	Args      map[string]interface{} `json:"args"`
 	Data      TransactionData   `json:"data"`
 	Value     int               `json:"value"`
 	Id        []byte            `json:"id"`
@@ -26,8 +26,6 @@ type Transaction struct {
 }
 
 type TransactionData struct {
-	Read map[string]string
-	Set  map[string]string
 	Code string
 }
 
@@ -54,22 +52,5 @@ type Block struct {
 	Hash       []byte
 	TX         []Transaction
 	StateRoot  []byte
-	eventRoot  []byte
-}
-
-type BlockHeader struct {
-	Height     int
-	Timestamp  string
-	Hash       []byte
-	PrevHash   []byte
-	MerkleRoot []byte
-}
-
-//跨链注册信息
-//一个典型的信息：
-// {"Id":"ssbc","Relayers":[{"Id":"","PublicKey":null,"IP":"127.0.0.1","Port":"63042"}],"Servers":[{"Id":"","PublicKey":null,"IP":"127.0.0.1","Port":"63042"}]}
-type RegisterInformation struct {
-	Id       string //链名
-	Relayers []Node //中继节点
-	Servers  []Node //服务节点
+	EventRoot  []byte
 }

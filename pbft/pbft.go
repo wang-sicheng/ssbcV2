@@ -3,17 +3,23 @@ package pbft
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/cloudflare/cfssl/log"
+	common2 "github.com/rjkris/go-jellyfish-merkletree/common"
 	"github.com/ssbcV2/account"
 	"github.com/ssbcV2/chain"
 	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/contract"
+	"github.com/ssbcV2/event"
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/merkle"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/network"
-	"github.com/ssbcV2/smart_contract"
 	"github.com/ssbcV2/util"
 	"io/ioutil"
 	"net"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -90,19 +96,6 @@ func (p *pbft) TcpListen() {
 }
 
 func (p *pbft) handleNewConn(conn net.Conn) {
-	//for {
-	//
-	//	buf := make([]byte, 4096)
-	//	n, err := conn.Read(buf) //从conn读取
-	//	if err == nil {
-	//		log.Info("接收到消息：", string(buf[:n]))
-	//		p.handleRequest(buf[:n], conn)
-	//	} else if err != io.EOF {
-	//		log.Error("[handleNewConn] err:", err)
-	//	}
-	//}
-
-	//Version2
 	b, err := ioutil.ReadAll(conn)
 	if err != nil {
 		log.Error("[handleNewConn] err:", err)
@@ -126,6 +119,22 @@ func (p *pbft) handleRequest(data []byte, conn net.Conn) {
 	if msg.Type == common.BlockSynResMsg {
 		network.HandleBlockSynResMsg(msg, conn)
 	}
+
+	// 只有client节点处理这个case
+	if msg.Type == common.PBFTReply && p.node.nodeID == global.Client {
+		bcs := chain.GetCurrentBlockChain()
+		newBC := new(meta.Block)
+		bc := msg.Content
+		err := json.Unmarshal(bc, newBC)
+		util.DealJsonErr("clientHandleTcpMsg", err)
+		//判断是否已将reply的新区块入库了
+		if newBC.Height == len(bcs) {
+			bcs = append(bcs, *newBC)
+			chain.StoreBlockChain(bcs)
+			//状态更新
+			p.refreshState(newBC, len(bcs)-1)
+		}
+	}
 }
 
 func (p *pbft) handlePBFTMsg(msg meta.TCPMessage) {
@@ -145,6 +154,7 @@ func (p *pbft) handlePBFTMsg(msg meta.TCPMessage) {
 //处理客户端发来的请求
 func (p *pbft) handleClientRequest(content []byte) {
 	log.Info("主节点已接收到客户端发来的request ...")
+	log.Infof("request info: %s", string(content))
 	//Step1:使用json解析出Request结构体
 	r := new(Request)
 	err := json.Unmarshal(content, r)
@@ -152,12 +162,38 @@ func (p *pbft) handleClientRequest(content []byte) {
 		log.Error(err)
 	}
 
-	//Step2：主节点需要先将交易存储至临时的交易池，待交易池满，打包为区块进行PBFT共识
-	transMsg := r.Content
-	trans := meta.Transaction{}
-	log.Infof("交易信息：%v\n", transMsg)
-	err = json.Unmarshal([]byte(transMsg), &trans)
-	util.DealJsonErr("handleClientRequest", err)
+	var transList []meta.Transaction
+	// 收到事件消息，转化成交易放入交易池
+	if r.Type == 1 {
+		var message meta.EventMessage
+		err := json.Unmarshal([]byte(r.Content), &message)
+		if err != nil {
+			log.Errorf("event message decode error: %s", err)
+		} else {
+			eventTrans, err := event.EventToTransaction(message)
+			if err != nil {
+				log.Errorf("event to trans error: %s", err)
+			}
+			transList = append(transList, eventTrans...)
+		}
+	} else {
+		//Step2：主节点需要先将交易存储至临时的交易池，待交易池满，打包为区块进行PBFT共识
+		transMsg := r.Content
+		trans := meta.Transaction{}
+		log.Infof("交易信息：%v\n", transMsg)
+		err = json.Unmarshal([]byte(transMsg), &trans)
+		util.DealJsonErr("handleClientRequest", err)
+
+		// 检查交易能否执行，没问题就打包成块
+		if ok := checkTran(trans); !ok {
+			// 将消息反馈至前端
+			return
+		}
+		trans.Timestamp = time.Now().String()
+		trans.Id, _ = util.CalculateHash([]byte(trans.Timestamp))
+		transList = append(transList, trans)
+	}
+
 	//step3：主节点对交易进行验签，验签不通过的丢弃
 	//if !RsaVerySignWithSha256(trans.Hash,trans.Sign,[]byte(trans.PublicKey)){
 	//	log.Error("[handleClientRequest] 验签失败!!")
@@ -175,24 +211,15 @@ func (p *pbft) handleClientRequest(content []byte) {
 
 	//解析交易、执行交易步骤根据交易的input生成output
 
-	// 检查交易能否执行，没问题就打包成块
-	if ok := checkTran(trans); !ok {
-		// 将消息反馈至前端
-		return
-	}
-
-	//trans = p.parseAndDealTransaction(trans)
-	trans.Timestamp = time.Now().String()
-	trans.Id, _ = util.CalculateHash([]byte(trans.Timestamp))
 	bc := chain.GetCurrentBlockChain()
 	index := len(bc)
-	p.transPool[index] = append(p.transPool[index], trans)
+	p.transPool[index] = append(p.transPool[index], transList...)
 	//满足交易数则打包新区块
-	if len(p.transPool[index]) == common.TxsThreshold {
+	if len(p.transPool[index]) >= common.TxsThreshold {
 		//主节点接收到的交易已经到达阈值，打包新区块进行PBFT共识
 		newBlock := chain.GenerateNewBlock(p.transPool[index])
 		//主节点对打包区块进行签名
-		blockSign := p.RsaSignWithSha256(newBlock.Hash, p.node.rsaPrivKey)
+		blockSign := util.RsaSignWithSha256(newBlock.Hash, p.node.rsaPrivKey)
 		newBlock.Signature = blockSign
 		newBlockMsg, err := json.Marshal(newBlock)
 		util.DealJsonErr("handleClientRequest", err)
@@ -206,7 +233,7 @@ func (p *pbft) handleClientRequest(content []byte) {
 		p.messagePool[digest] = *r
 		//主节点对消息摘要进行签名
 		digestByte, _ := hex.DecodeString(digest)
-		signInfo := p.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
+		signInfo := util.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
 		//拼接成PrePrepare，准备发往follower节点
 		pp := PrePrepare{*r, digest, p.sequenceID, signInfo}
 		b, err := json.Marshal(pp)
@@ -222,128 +249,9 @@ func (p *pbft) handleClientRequest(content []byte) {
 		p.broadcast(msg)
 		log.Info("PrePrepare广播完成")
 	} else {
-		log.Info("主节点已将交易存储至交易池，交易详情：", transMsg)
+		log.Infof("主节点已将交易存储至交易池，交易详情：%+v", transList)
 	}
 }
-
-//主节点收到交易后需要对交易进行解析处理
-//func (p *pbft) parseAndDealTransaction(t meta.Transaction) meta.Transaction {
-//	log.Info("主节点接收到的交易为:", t)
-//	//首先判断该笔交易是否为智能合约调用
-//	if t.Contract != "" {
-//		//先判断是合约调用还是合约部署
-//		if t.To == commonconst.ContractDeployAddress {
-//			//合约部署处理
-//			//step1：生成合约账户
-//			priKey, PubKey := GetKeyPair()
-//			//将公钥进行hash
-//			pubHash, _ := util.CalculateHash(PubKey)
-//			//将公钥的前20位作为账户地址
-//			addr := hex.EncodeToString(pubHash[:20])
-//			ad := meta.AccountData{
-//				Code:         t.Data.Code,
-//				ContractName: t.Contract,
-//			}
-//			account := meta.Account{
-//				Address:    addr,
-//				Balance:    0,
-//				Data:       ad,
-//				PublicKey:  string(PubKey),
-//				PrivateKey: string(priKey),
-//				IsContract: true,
-//			}
-//			accountB, _ := json.Marshal(account)
-//			set := make(map[string]string)
-//			accountKey := addr
-//			set[accountKey] = string(accountB)
-//			t.Data.Set = set
-//		} else {
-//			//合约调用处理--调用智能合约产生读写集
-//			t.Args["sender"] = t.From
-//			log.Infof("调用合约：%v，方法：%v，参数：%v\n", t.Contract, t.Method, t.Args)
-//			go smart_contract.CallContract(t.Contract, t.Method, t.Args)
-//			//if err!=nil{
-//			//	log.Error("合约调用失败")
-//			//	//调用失败
-//			//}else {
-//			//	//交易的data字段赋值
-//			//	t.Data.Read=res.Read
-//			//	t.Data.Set=res.Set
-//			//}
-//		}
-//	} else {
-//		//非智能合约调用交易-->即简单的转账交易(而且是简单的本链转账交易)
-//		t = p.dealLocalTransFer(t)
-//	}
-//	return t
-//}
-
-//func (p *pbft) dealLocalTransFer(t meta.Transaction) meta.Transaction {
-//	log.Infof("准备处理转账交易。")
-//	from := t.From
-//	to := t.To
-//	value := t.Value
-//	//step1：简单的余额校验，转出账户是否具有转账条件
-//	fromKey := from
-//	fromA := levelDB.DBGet(fromKey)
-//	fromAccount := meta.Account{}
-//	err := json.Unmarshal(fromA, &fromAccount)
-//
-//	toKey := to
-//	if from == commonconst.FaucetAccountAddress {
-//		log.Infof("准备创建账户。")
-//		newAccount := meta.Account{
-//			Address:    toKey,
-//			Balance:    t.Value,
-//			Data:       meta.AccountData{},
-//			PrivateKey: "",
-//			PublicKey:  t.PublicKey,
-//		}
-//		newAccountBytes, _ := json.Marshal(newAccount)
-//		levelDB.DBPut(to, newAccountBytes)
-//
-//		setMap := make(map[string]string)
-//
-//		toRefresh, _ := json.Marshal(newAccount)
-//		setMap[to] = string(toRefresh)
-//		//交易的写集赋值
-//		t.Data.Set = setMap
-//		return t
-//	}
-//	toA := levelDB.DBGet(toKey)
-//	toAccount := meta.Account{}
-//	err = json.Unmarshal(toA, &toAccount)
-//
-//	log.Infof("%v\n", fromAccount)
-//	log.Infof("%v\n", toAccount)
-//
-//	if err != nil {
-//		log.Error("[dealLocalTransFer] json unmarshal failed,err:", err)
-//	}
-//	if fromAccount.Balance < value {
-//		return t
-//	} else {
-//		//余额够，需要进行状态变更
-//		toKey := to
-//		toA := levelDB.DBGet(toKey)
-//		toAccount := meta.Account{}
-//		err := json.Unmarshal(toA, &toAccount)
-//		if err != nil {
-//			log.Error("[dealLocalTransFer] json unmarshal failed,err:", err)
-//		}
-//		//from的钱减，to的钱加
-//		fromAccount.Balance = fromAccount.Balance - value
-//		toAccount.Balance = toAccount.Balance + value
-//		setMap := make(map[string]string)
-//		fromRefresh, _ := json.Marshal(fromAccount)
-//		toRefresh, _ := json.Marshal(toAccount)
-//		setMap[fromKey] = string(fromRefresh)
-//		setMap[toKey] = string(toRefresh)
-//		//交易的写集赋值
-//		t.Data.Set = setMap
-//		return t
-//	}
-//}
 
 //处理预准备消息
 func (p *pbft) handlePrePrepare(content []byte) {
@@ -355,7 +263,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		log.Error(err)
 	}
 	//获取主节点的公钥，用于数字签名验证
-	primaryNodePubKey := p.getPubKey("N0")
+	primaryNodePubKey := p.getPubKey(global.Master)
 	digestByte, _ := hex.DecodeString(pp.Digest)
 	//首先检查所有的交易客户端签名（防止主节点作恶）
 	//step1先获取到全部的交易
@@ -375,7 +283,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		log.Info("信息摘要对不上，拒绝进行prepare广播")
 	} else if p.sequenceID+1 != pp.SequenceID {
 		log.Info("消息序号对不上，拒绝进行prepare广播")
-	} else if !p.RsaVerySignWithSha256(digestByte, pp.Sign, primaryNodePubKey) {
+	} else if !util.RsaVerySignWithSha256(digestByte, pp.Sign, primaryNodePubKey) {
 		log.Info("主节点签名验证失败！,拒绝进行prepare广播")
 	} else {
 		//序号赋值
@@ -384,7 +292,7 @@ func (p *pbft) handlePrePrepare(content []byte) {
 		log.Info("已将消息存入临时节点池")
 		p.messagePool[pp.Digest] = pp.RequestMessage
 		//节点使用私钥对其签名
-		sign := p.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
+		sign := util.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
 		//拼接成Prepare
 		pre := Prepare{pp.Digest, pp.SequenceID, p.node.nodeID, sign}
 
@@ -433,7 +341,7 @@ func (p *pbft) handlePrepare(content []byte) {
 		log.Info("当前临时消息池无此摘要，拒绝执行commit广播")
 	} else if p.sequenceID != pre.SequenceID {
 		log.Info("消息序号对不上，拒绝执行commit广播")
-	} else if !p.RsaVerySignWithSha256(digestByte, pre.Sign, MessageNodePubKey) {
+	} else if !util.RsaVerySignWithSha256(digestByte, pre.Sign, MessageNodePubKey) {
 		log.Info("节点签名验证失败！,拒绝执行commit广播")
 	} else {
 		p.setPrePareConfirmMap(pre.Digest, pre.NodeID, true)
@@ -443,7 +351,7 @@ func (p *pbft) handlePrepare(content []byte) {
 		}
 		//因为主节点不会发送Prepare，所以不包含自己
 		specifiedCount := 0
-		if p.node.nodeID == "N0" {
+		if p.node.nodeID == global.Master {
 			specifiedCount = common.NodeCount / 3 * 2
 		} else {
 			specifiedCount = (common.NodeCount / 3 * 2) - 1
@@ -457,7 +365,7 @@ func (p *pbft) handlePrepare(content []byte) {
 			//*******************************************************************
 
 			//待注释--测试专用（节点作恶：即使全部验证通过也拒绝广播）
-			//if p.node.nodeID=="N0"{
+			//if p.node.nodeID==common.Master{
 			//	log.Info("主节点作恶：全部验证通过，但是拒绝广播")
 			//	p.lock.Unlock()
 			//	return
@@ -472,7 +380,7 @@ func (p *pbft) handlePrepare(content []byte) {
 			//*******************************************************************
 
 			//节点使用私钥对其签名
-			sign := p.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
+			sign := util.RsaSignWithSha256(digestByte, p.node.rsaPrivKey)
 			c := Commit{pre.Digest, pre.SequenceID, p.node.nodeID, sign}
 			bc, err := json.Marshal(c)
 			if err != nil {
@@ -508,7 +416,7 @@ func (p *pbft) handleCommit(content []byte) {
 		log.Info("当前prepare池无此摘要，拒绝将信息持久化到本地消息池")
 	} else if p.sequenceID != c.SequenceID {
 		log.Info("消息序号对不上，拒绝将信息持久化到本地消息池")
-	} else if !p.RsaVerySignWithSha256(digestByte, c.Sign, MessageNodePubKey) {
+	} else if !util.RsaVerySignWithSha256(digestByte, c.Sign, MessageNodePubKey) {
 		log.Info("节点签名验证失败！,拒绝将信息持久化到本地消息池")
 	} else {
 		p.setCommitConfirmMap(c.Digest, c.NodeID, true)
@@ -531,7 +439,7 @@ func (p *pbft) handleCommit(content []byte) {
 			err = json.Unmarshal([]byte(newBCMsg), newBC)
 			util.DealJsonErr("handleCommit", err)
 			//先更新状态树，得到stateRoot，再上链
-			p.refreshState(newBC)
+			p.refreshState(newBC, len(bcs))
 
 			bcs = append(bcs, *newBC)
 			chain.StoreBlockChain(bcs)
@@ -541,7 +449,7 @@ func (p *pbft) handleCommit(content []byte) {
 				Type:    common.PBFTReply,
 				Content: []byte(newBCMsg),
 			}
-			network.TCPSend(tcpMsg, p.messagePool[c.Digest].ClientAddr)
+			util.TCPSend(tcpMsg, global.ClientToNodeAddr)
 			p.isReply[c.Digest] = true
 			log.Info("reply完毕")
 		}
@@ -550,47 +458,80 @@ func (p *pbft) handleCommit(content []byte) {
 }
 
 // 状态数据库更新
-func (p *pbft) refreshState(b *meta.Block) {
+func (p *pbft) refreshState(b *meta.Block, height int) {
 	//ste1：首先取出本区块中所有的交易
 	txs := b.TX
-	// 需要更新到状态树的account
-	var accounts []meta.Account
+
 	// 执行每一笔交易
 	for _, tx := range txs {
-		p.execute(tx, &accounts)
+		p.execute(tx)
 	}
-	if len(accounts) != 0 { // 当账户信息出现变动时才更新
-		stateRootHash, err := merkle.UpdateAccountState(accounts, merkle.GetVersion())
-		if err != nil {
-			log.Error(err)
-		}
-		b.StateRoot = stateRootHash.Bytes()
+	if len(global.ChangedAccounts) != 0 && len(global.TreeData) != 0 {
+		return
 	}
+	// state和event版本同步,和区块高度相同
+	var stateRootHash, eventRootHash common2.HashValue
+	if len(global.ChangedAccounts) != 0 {
+		stateRootHash, _ = merkle.UpdateStateTree(global.ChangedAccounts, uint64(height), merkle.AccountStatePath)
+	} else { // 需要更新的账户为空时，更新初始账户
+		stateRootHash, _ = merkle.UpdateStateTree([]meta.JFTreeData{merkle.InitAccount}, uint64(height), merkle.AccountStatePath)
+	}
+	b.StateRoot = stateRootHash.Bytes()
+	if len(global.TreeData) != 0 {
+		eventRootHash, _ = merkle.UpdateStateTree(global.TreeData, uint64(height), merkle.EventStatePath)
+	} else {
+		eventRootHash, _ = merkle.UpdateStateTree([]meta.JFTreeData{merkle.InitEvent}, uint64(height), merkle.EventStatePath)
+	}
+	b.EventRoot = eventRootHash.Bytes()
+
+	global.ChangedAccounts = []meta.JFTreeData{} // 本轮区块d的状态修改已持久化，清空列表
+	global.TreeData = []meta.JFTreeData{}        // 本轮区块的event，sub已持久化，清空列表
 }
 
-func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
+func (p *pbft) execute(tx meta.Transaction) {
 	switch tx.Type {
 	case meta.Register:
-		*accounts = append(*accounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
+		global.ChangedAccounts = append(global.ChangedAccounts, account.CreateAccount(tx.To, tx.PublicKey, common.InitBalance))
 	case meta.Transfer:
-		*accounts = append(*accounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
+		global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value), account.AddBalance(tx.To, tx.Value))
 	case meta.Publish:
-		*accounts = append(*accounts, account.CreateContract(tx.To, "", tx.Data.Code, tx.Contract))
-		// 目前是单机版本，合约只由N0节点部署
-		if p.node.nodeID == "N0" {
-			//部署合约
-			contractName := tx.Contract
-			//生成build地址
-			path := "/smart_contract/" + contractName + "/"
-			smart_contract.BuildAndRun(path, contractName)
+		contract.SetContext(meta.ContractTask{
+			Caller: tx.From, // 部署时加载发布人的地址，用于智能合约init
+		})
+
+		err := p.deployContract(tx.Contract, tx.Data.Code)
+		if err != nil {
+			log.Error("节点部署合约出错: ", err)
+			return
 		}
+
+		contractInfo := util.ParseContract(tx.Data.Code)
+		newAccount := account.CreateContract(tx.Contract, tx.To, tx.Data.Code, tx.From, contractInfo)
+		global.ChangedAccounts = append(global.ChangedAccounts, newAccount)
+		//更新事件数据，每个节点都执行
+		//contractName := tx.Contract
+		//eList, _ := event.ExecuteInitEvent(contractName, newAccount.Address, tx.From)
+		//global.TreeData = append(global.TreeData, eList...)
 	case meta.Invoke:
-		// 目前是单机版本，合约只由N0节点调用
-		if p.node.nodeID == "N0" {
-			// 调用合约
-			tx.Args["sender"] = tx.From
-			log.Infof("调用合约：%v，方法：%v，参数：%v\n", tx.Contract, tx.Method, tx.Args)
-			go smart_contract.CallContract(tx.Contract, tx.Method, tx.Args)
+		// 调用合约的同时向合约账户转账
+		if tx.Value > 0 {
+			global.ChangedAccounts = append(global.ChangedAccounts, account.SubBalance(tx.From, tx.Value))
+			global.ChangedAccounts = append(global.ChangedAccounts, account.AddBalance(tx.To, tx.Value))
+		}
+		// 每个节点都会去执行智能合约，需要确保智能合约执行的确定性（暂时没有做合约执行后的共识）
+		global.TaskList = append(global.TaskList, meta.ContractTask{
+			tx.From,
+			tx.Value,
+			tx.Contract,
+			tx.Method,
+			tx.Args,
+		})
+		for len(global.TaskList) != 0 {
+			err := event.HandleContractTask()
+			if err != nil {
+				log.Errorf("contract task handle error: %s", err)
+				continue
+			}
 		}
 	default:
 		log.Infof("未知的交易类型")
@@ -599,6 +540,13 @@ func (p *pbft) execute(tx meta.Transaction, accounts *[]meta.Account) {
 
 // 交易打包前检测
 func checkTran(tx meta.Transaction) bool {
+	if tx.Sign != nil {
+		ok := util.RsaVerySignWithSha256(tx.Hash, tx.Sign, []byte(tx.PublicKey))
+		if !ok {
+			log.Errorf("交易签名校验失败,拒绝打包交易")
+			return false
+		}
+	}
 	switch tx.Type {
 	case meta.Transfer:
 		// 判断能否转账
@@ -628,11 +576,11 @@ func (p *pbft) sequenceIDAdd() {
 
 //向除自己外的其他节点进行广播
 func (p *pbft) broadcast(msg meta.TCPMessage) {
-	for i := range common.NodeTable {
+	for i := range global.NodeTable {
 		if i == p.node.nodeID {
 			continue
 		}
-		go network.TCPSend(msg, common.NodeTable[i])
+		go util.TCPSend(msg, global.NodeTable[i])
 	}
 }
 
@@ -668,4 +616,65 @@ func (p *pbft) getPivKey(nodeID string) []byte {
 		log.Error(err)
 	}
 	return key
+}
+
+func (p *pbft) deployContract(name, code string) error {
+	dir := "./contract/contract/" + p.node.nodeID + "/" + name + "/"
+	if util.FileExists(dir) {
+		log.Error("该合约已存在")
+		return errors.New("该合约已存在")
+	} else {
+		err := os.MkdirAll(dir, 0777)
+		if err != nil {
+			log.Error(err)
+		}
+		// 创建保存文件
+		destFile, err := os.Create(dir + name + ".go")
+		if err != nil {
+			log.Error("Create failed: %s\n", err)
+			return err
+		}
+		defer destFile.Close()
+		_, _ = destFile.WriteString(code)
+
+		err = contract.GoBuildPlugin(name)
+		if err != nil {
+			//将文件夹删除
+			err1 := os.RemoveAll(dir)
+			if err1 != nil {
+				log.Error(err1)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+// 部署预言机系统智能合约
+func (p *pbft) DeploySysContract() error {
+	r, _ := regexp.Compile("(.*).go")
+	fds, err := ioutil.ReadDir("./contract/system")
+	if err != nil {
+		log.Errorf("遍历contract/system失败: %s", err)
+		return err
+	}
+	for _, fi := range fds {
+		if !fi.IsDir() {
+			res := r.FindStringSubmatch(fi.Name())
+			if len(res) == 2 {
+				contractName := res[1]
+				code, _ := ioutil.ReadFile("./contract/system/" + fi.Name())
+				//log.Infof("name: %s", contractName)
+				event.CreateOracleAccount(contractName, string(code))
+				err := p.deployContract(contractName, string(code))
+				if err != nil {
+					log.Errorf("系统合约部署失败:%s,%s", fi.Name(), err)
+					continue
+				} else {
+					log.Infof("系统合约%s部署成功", contractName)
+				}
+			}
+		}
+	}
+	return nil
 }

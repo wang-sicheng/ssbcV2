@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/ssbcV2/chain"
-	"github.com/ssbcV2/common"
+	"github.com/ssbcV2/global"
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/util"
 	"net"
@@ -25,16 +25,16 @@ func HandleBlockSynReqMsg(msg meta.TCPMessage, conn net.Conn) {
 	//先获取到请求方的地址
 	reqNode := msg.From
 	var reqAddr string
-	if reqNode == "client" {
-		reqAddr = common.ClientToNodeAddr
+	if reqNode == global.Client {
+		reqAddr = global.ClientToNodeAddr
 	} else {
-		reqAddr = common.NodeTable[reqNode]
+		reqAddr = global.NodeTable[reqNode]
 	}
 	//生成区块同步回应消息
 	resMsg := GenBlockSynResMsg()
 	log.Info("区块头同步回应消息!")
 	//回复
-	TCPSend(resMsg, reqAddr)
+	util.TCPSend(resMsg, reqAddr)
 }
 
 //处理区块链同步回复消息
