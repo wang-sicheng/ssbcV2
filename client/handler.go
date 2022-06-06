@@ -16,6 +16,8 @@ import (
 	"github.com/ssbcV2/meta"
 	"github.com/ssbcV2/pbft"
 	"github.com/ssbcV2/util"
+	"go/parser"
+	"go/token"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -93,6 +95,13 @@ func postContract(ctx *gin.Context) {
 	result, err := check(postC.Code)
 	if err != nil {
 		hr := errResponse(result)
+		ctx.JSON(http.StatusOK, hr)
+		return
+	}
+
+	packageName := getPackageName(postC.Code)
+	if packageName != "main" {
+		hr := errResponse("包名必须为 main")
 		ctx.JSON(http.StatusOK, hr)
 		return
 	}
@@ -565,4 +574,14 @@ func genCode(c *gin.Context) {
 		c.JSON(http.StatusNoContent, "no content!")
 	}
 	// todo:删除过去上传的模型
+}
+
+func getPackageName(code string) string {
+	set := token.NewFileSet()
+	f, err := parser.ParseFile(set, "", code, 0)
+	if err != nil {
+		log.Info("Failed to parse code:", err)
+		return ""
+	}
+	return f.Name.Name
 }
