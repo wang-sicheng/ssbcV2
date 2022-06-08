@@ -306,11 +306,9 @@ func query(ctx *gin.Context) {
 		data, _ := event.GetAllEventData()
 		response = goodResponse(data)
 	case "getOracleAccount":
-		accountBytes, _ := json.Marshal(event.OracleAccounts)
-		response = goodResponse(accountBytes)
+		response = goodResponse(event.OracleAccounts)
 	case "getOracleReports":
-		reportBytes, _ := json.Marshal(event.OracleReports)
-		response = goodResponse(reportBytes)
+		response = goodResponse(event.OracleReports)
 	default:
 		log.Info("Query参数有误!")
 		response = errResponse("Query参数有误!")

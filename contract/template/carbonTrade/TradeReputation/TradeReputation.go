@@ -11,10 +11,12 @@ import (
 碳交易链
 */
 
-var localReputation float64
+var LocalReputation float64
+var GlobalReputation float64
 
 func init()  {
-	localReputation = 0.1
+	LocalReputation = 0.1
+	GlobalReputation = 0
 }
 
 // pull碳征信链的征信数据,回调StartCarbonTrade
@@ -59,6 +61,7 @@ func StartCarbonTrade(args map[string]interface{}) (interface{}, error) {
 		return meta.ContractUpdateData{}, err
 	}
 	credit, ok := dataMap["GlobalReputation"].(float64)
+	GlobalReputation = credit
 	if !ok {
 		contract.Info("credit解析失败：%s", err)
 		return meta.ContractUpdateData{}, nil
@@ -72,7 +75,7 @@ func StartCarbonTrade(args map[string]interface{}) (interface{}, error) {
 // push碳交易链的局部信誉给碳征信链
 func PushLocalReputation(args map[string]interface{}) (interface{}, error) {
 	tdata := map[string]interface{}{
-		"localRep": localReputation,
+		"localRep": LocalReputation,
 	}
 	tdataBytes, _ := json.Marshal(tdata)
 	reqArgs := map[string]interface{}{
